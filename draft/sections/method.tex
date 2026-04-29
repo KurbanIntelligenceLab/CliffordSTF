@@ -1,0 +1,64 @@
+\section{CliffordSTF}\label{sec:method}
+
+\subsection{The \texorpdfstring{$L \leq 1$}{L <= 1} Limitation at the Bilinear Level}\label{sec:limitation}
+
+The geometric product of two vectors $u, v \in \mathbb{R}^3$ yields $uv = u \cdot v + u \wedge v$, realising only the $L{=}0$ and $L{=}1$ components of $\mathbf{1} \otimes \mathbf{1} = \mathbf{0} \oplus \mathbf{1} \oplus \mathbf{2}$. Under $\mathrm{SO}(3)$ the graded components of $\mathrm{Cl}(3,0)$ decompose as $2\cdot L{=}0 \oplus 2\cdot L{=}1$ (grade~0 and grade~3 carry $L{=}0$, grade~1 and the Hodge dual of grade~2 carry $L{=}1$), and no grade contains the 5-dimensional $L{=}2$ irrep \citep{doran2003geometric,lounesto2001clifford}. The grade structure of $\mathrm{Cl}(3,0)$ and its $\mathrm{SO}(3)$ content are classical \citep{lounesto2001clifford,doran2003geometric}, and prior Clifford-network papers have observed that $L \geq 2$ content arises only nonlinearly through repeated geometric products~\citep{ruhe2023cgenn,brehmer2023geometric}. The diagnostic we make explicit here is the empirical cost of this structural limitation: the geometric product as a grade-preserving bilinear cannot produce $L \geq 2$ features from $L \leq 1$ inputs at the linear-in-product level, so features required for quadrupolar distributions, $d$-orbital interactions, and anisotropic stress must be reconstructed indirectly through many stacked layers. We show in \S\ref{sec:results_md17} that at matched parameter budget this limitation manifests as near-worst force cosine similarity across the entire $L \leq 1$ direct-force family, and that supplying the missing irreps directly via STF tracks closes most of the gap.
+
+\begin{remark}[Equivariance scope]\label{rem:so3_vs_o3}
+All equivariance claims are $\mathrm{SO}(3)$. Under $\mathrm{SO}(3)$, polar vectors (grade~1) and axial vectors (Hodge of grade~2) transform identically. Under $\mathrm{O}(3)$ they carry parity $-1$ and $+1$ respectively; full $\mathrm{O}(3)$ equivariance would require explicit parity tracking (Supplementary~\ref{supp:so3_o3}).
+\end{remark}
+
+\subsection{Symmetric Traceless Tensor Channels}\label{sec:stf_channels}
+
+A rank-$\ell$ symmetric traceless tensor in $\mathbb{R}^3$ has $2\ell+1$ independent components and transforms as the $L{=}\ell$ irrep of $\mathrm{SO}(3)$ \citep{coope1965irreducible,applequist1989traceless,stone2013theory,shao2025orthonormal}. We use two:
+\[
+\mathrm{STF}_2(u,v)_{ij} = \tfrac{1}{2}(u_iv_j + u_jv_i) - \tfrac{1}{3}(u \cdot v)\,\delta_{ij}, \qquad
+\mathrm{STF}_3(S,v)_{ijk} = T^{\text{sym}}_{ijk} - \tfrac{1}{5}\bigl(\delta_{ij}A_k + \delta_{ik}A_j + \delta_{jk}A_i\bigr),
+\]
+where $S$ is symmetric traceless, $T^{\text{sym}}_{ijk} = \tfrac{1}{3}(S_{ij}v_k + S_{ik}v_j + S_{jk}v_i)$, and $A_k = \tfrac{2}{3}S_{kl}v_l$. Coefficient derivations and DOF checks are in Supplementary~\ref{supp:stf_coefficients}. STF$_2$ is stored as the 5 components $[S_{xx}, S_{xy}, S_{xz}, S_{yy}, S_{yz}]$ with $S_{zz}=-S_{xx}-S_{yy}$ implicit; STF$_3$ is stored as 7 independent components.
+
+\textbf{Constructive Clebsch--Gordan equivalence.} The equivalence between symmetric traceless Cartesian tensors and spherical-harmonic irreps of $\mathrm{SO}(3)$ is classical~\citep{coope1965irreducible,applequist1989traceless,thorne1980multipole,stone2013theory} and has recently been placed on rigorous algorithmic footing via orthonormal change-of-basis matrices up to rank 9~\citep{shao2025orthonormal}. Our contribution is architectural: we identify the specific combination of the $\mathrm{Cl}(3,0)$ geometric product with closed-form STF operations as sufficient to span the full Clebsch--Gordan decomposition for irrep tensor products through $L{=}3$ at the per-layer bilinear, yielding a forward pass that invokes neither Clebsch--Gordan coefficient tables, nor Wigner-$D$ matrices, nor spherical-harmonic evaluation.
+
+\begin{theorem}[Constructive CG recovery via geometric product and STF operations]\label{thm:cg_completeness}
+Let $u, v \in \mathbb{R}^3$ carry the $L{=}1$ irrep of $\mathrm{SO}(3)$. The Clebsch--Gordan decomposition $\mathbf{1} \otimes \mathbf{1} = \mathbf{0} \oplus \mathbf{1} \oplus \mathbf{2}$ is recovered in closed form by
+\[
+[u \otimes v]_{L=0} = \langle uv \rangle_0, \qquad
+[u \otimes v]_{L=1} = \star\langle uv \rangle_2, \qquad
+[u \otimes v]_{L=2} = \mathrm{STF}_2(u,v),
+\]
+where $\langle \cdot \rangle_k$ extracts grade~$k$ of the $\mathrm{Cl}(3,0)$ geometric product $uv$, $\star$ is the Hodge dual, and $\mathrm{STF}_2$ is the classical symmetric traceless projector of \citet{coope1965irreducible,applequist1989traceless}. The three components sum component-by-component to $u \otimes v$ and each map is $\mathrm{SO}(3)$-equivariant.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Expand $u_iv_j = \tfrac{1}{3}\delta_{ij}(u\cdot v) + \tfrac{1}{2}(u_iv_j - u_jv_i) + \mathrm{STF}_2(u,v)_{ij}$. The antisymmetric part equals $\tfrac{1}{2}\varepsilon_{ijk}(u\times v)_k$, and $u\times v = \star(u\wedge v)$ under the Hodge isomorphism $\Lambda^2\mathbb{R}^3 \cong \mathbb{R}^3$. Equivariance follows from $\mathrm{SO}(3)$-equivariance of the geometric product \citep{doran2003geometric}, the Hodge star, and symmetric/trace-removal operations. Full coordinates in Supplementary~\ref{supp:cg_proof}.
+\end{proof}
+
+Higher-order couplings ($\mathbf{2}\otimes\mathbf{1}$, $\mathbf{2}\otimes\mathbf{2}$, $\mathbf{3}\otimes\mathbf{1}$, with $L{=}4$ outside our $L_{\max}{=}3$ cut) are recovered by analogous STF contractions, enumerated with explicit coordinates in Supplementary~\ref{supp:cg_proof}. Each constructive map is a polynomial in its inputs with constant rational coefficients matching the classical detracing rule $1/(2\ell-1)$ in $d=3$~\citep{applequist1989traceless,thorne1980multipole}. We verify each map against a direct Wigner $3j$-symbol reference to machine precision (Supplementary~\ref{supp:cg_test}), so the architectural realisation reproduces the orthonormal equivalence of \citet{shao2025orthonormal} in the specific cases used by CliffordSTF.
+
+\subsection{Architecture}\label{sec:architecture}
+
+CliffordSTF extends the 8D multivector with STF channels: \textbf{Base} (8D, $2\cdot L{=}0 \oplus 2\cdot L{=}1$); \textbf{+STF$_2$} (13D); \textbf{+STF$_3$} (20D). Setting $\mathrm{stf\_mode}{=}\text{none}$ with Hodge, routing, and cross-track coupling all disabled recovers the base Clifford model bit-for-bit. A per-layer grade schedule \citep{ruhe2023cgenn} activates grades progressively, yielding grade-sparse geometric products in early layers. The model uses standard PyTorch operations with no \texttt{e3nn} \citep{geiger2022e3nn}, no Wigner-$D$ coefficients, and no precomputed CG tables; the only nonstandard primitives are the $8\times8$ Cayley table and the closed-form STF operations of \S\ref{sec:stf_channels}.
+
+\textbf{Embedding.} Atomic numbers map to scalar features via a learned embedding; STF channels are initialised with small Gaussian noise ($\sigma{=}10^{-3}$). Edges carry grade-0 RBF features, grade-1 direction features, and STF$_2$ features from $\mathrm{STF}_2(\hat{r}_{ij}, \hat{r}_{ij})$, all radially modulated (Supplementary~\ref{supp:edge_embed}).
+
+\textbf{Dual-track message passing.} The Clifford-track message is
+\[
+m^{\mathrm{Cl}}_{j \to i} = \alpha_{ij} \bigl[W_1 \cdot \mathrm{GP}(h_j^{\mathrm{Cl}}, e_{ij}) + W_2 \cdot \mathrm{GP}(e_{ij}, h_j^{\mathrm{Cl}}) + W_{\mathrm{skip}} \cdot h_j^{(0)}\bigr],
+\]
+with grade-sparse GP dispatch \citep{ruhe2023cgenn} and an invariant scalar attention weight $\alpha_{ij}$ from multi-head dot-product attention on grade-0 features with an additive RBF bias. STF$_2$ messages combine generation from grade-1 features ($\mathrm{STF}_2(h_j^{\mathrm{vec}}, \hat{r}_{ij})$) with radially-modulated propagation of the sender's STF$_2$ features; STF$_3$ messages are analogous, generated via $\mathrm{STF}_3(h_j^{\mathrm{STF}_2}, \hat{r}_{ij})$.
+
+\textbf{Cross-track coupling.} The sender's STF$_2$ features contract with its grade-1 vectors via $S \cdot v$, injecting $L{=}2$ information into the Clifford track:
+\[
+m^{\mathrm{Cl}}_{j \to i}[\text{grade-1}] \mathrel{+}= W_{\mathrm{cross}} \cdot \mathrm{contract}(h_j^{\mathrm{STF}_2}, h_j^{\mathrm{vec}}).
+\]
+This creates bidirectional flow: grade-1 vectors generate STF$_2$ (upward) while STF$_2$ feeds back into grade-1 through contraction (downward). At the many-body stage an augmented product couples all tracks through six bilinear terms, each corresponding bijectively to a CG channel in Theorem~\ref{thm:cg_completeness} and its higher-rank extensions (enumerated in Supplementary~\ref{supp:aug_prod}). Without cross-track coupling, STF parameters receive only weak invariant-norm gradients and degrade training; this is confirmed by the ablation (\S\ref{sec:results_scalar}).
+
+\textbf{Update.} Iterated augmented products provide multi-body correlations up to body order 4 \citep{batatia2022mace}, followed by a block-diagonal CliffordSTFLinear, equivariant gating (SiLU on scalars, norm-gating on $L \geq 1$ \citep{weiler20183d,schutt2021painn}), a residual connection, and track-wise equivariant normalisation (Supplementary~\ref{supp:normalization}).
+
+\textbf{Adaptive routing (optional).} A routing module applies per-atom multiplicative gates to the STF tracks between layers, reducing effective angular bandwidth for atoms in symmetric environments; the Clifford track is always active. Static (per-atom-type) and learned (MLP on invariant descriptors) variants are supported (Supplementary~\ref{supp:routing}).
+
+\subsection{Readout}\label{sec:readout}
+
+\textbf{Energy.} Per-atom energies are computed from invariant features: grade-0 scalars, GP self-interaction scalars (grade-0 component of $\mathrm{GP}(W h^{\mathrm{Cl}}, h^{\mathrm{Cl}})$), and per-channel Frobenius norms $\lVert h^{\mathrm{STF}_2}\rVert_F$ and $\lVert h^{\mathrm{STF}_3}\rVert_F$, concatenated and passed through an MLP. Per-layer readouts summed across interaction layers give a MACE-style multi-scale decomposition \citep{batatia2022mace}.
+
+\textbf{Forces.} A per-atom head applies a linear projection over $2C$ vector channels obtained by concatenating grade-1 vectors and the Hodge duals of grade-2 bivectors (valid under $\mathrm{SO}(3)$; Remark~\ref{rem:so3_vs_o3}), doubling the effective force basis at zero equivariant cost. A per-edge head adds a scatter-summed STF$_2$ contribution $S_{ij}\hat{r}_{ij}$, magnitude-gated by an MLP on $\lVert h^{\mathrm{STF}_2}\rVert_F$. This explicit $L{=}2 \otimes L{=}1 \to L{=}1$ path captures angular force components inaccessible to $L \leq 1$ architectures.

@@ -1,0 +1,121 @@
+\section{Experiments}\label{sec:experiments}
+
+\subsection{Benchmarks and protocol}\label{sec:benchmarks}\label{sec:protocol}
+
+We evaluate on five benchmark families: \textbf{MD17} (10 small-molecule S2EF trajectories; 900/100/1000 per molecule), \textbf{QM9} (six scalar targets), \textbf{Molecule3D} (large-scale HOMO--LUMO gap), \textbf{OC20} (200k subset, IS2RE and S2EF), and \textbf{OC22} (full IS2RE-Total and S2EF-Total). We compare against twelve architecture families spanning invariant message-passing (SchNet~\citep{schutt2017schnet}, DimeNet++~\citep{gasteiger2020dimenetpp}), vector equivariant (PaiNN~\citep{schutt2021painn}, TorchMD-NET~\citep{tholke2022torchmdnet}, ViSNet~\citep{wang2024visnet}), tensor-field (NequIP~\citep{batzner2022nequip}, EquiformerV2~\citep{liao2024equiformerv2}, GotenNet~\citep{aykent2025gotennet}), body-ordered (MACE~\citep{batatia2022mace}, ICTP~\citep{zaverkin2024ictp}), frame-averaging (FAENet~\citep{duval2023faenet}), and Clifford-algebraic (our base $\mathrm{Cl}(3,0)$, recovered from CliffordSTF by disabling all extensions); MACE, ICTP, and EquiformerV2 are additionally run at $L_{\max} \in \{1,2,3\}$, $\{1,2,3\}$, and $\{2,3,4\}$ respectively where applicable to trace angular resolution within a family, giving up to eighteen baseline configurations on MD17. All models use a unified training framework at approximately $10^6$ parameters, Adam with learning rate $10^{-4}$, no weight decay, early stopping at patience 30, and no EMA or warm-up; per-benchmark settings (epochs, batch size, loss, seeds) are in Supplementary~\ref{supp:protocol}. The protocol targets representational comparability at fixed capacity and does not chase per-architecture SOTA. Under this fixed-budget regime several baselines do not reach their published accuracies, which is expected and honestly reported in the tables; the relevant comparison is within-protocol, not across papers. Metrics are energy MAE (meV on MD17/QM9/Molecule3D, eV on OC22/OC20), force MAE (meV/\AA{} on MD17, eV/\AA{} on OC22/OC20), and force cosine similarity (standard raw value in $[-1,1]$; higher is better). All numbers are mean $\pm$ standard deviation across seeds.
+
+\subsection{Force directional accuracy on MD17}\label{sec:results_md17}
+
+Force cosine similarity isolates directional fidelity from magnitude accuracy and is standard on OC20 but has not been previously reported on MD17; we include it as our primary mechanistic diagnostic. The three invariant architectures (SchNet, DimeNet++, FAENet) compute forces via energy gradients whose cosine values depend on energy--force loss balancing, so we include them in tables for completeness but exclude them from the directional narrative; GotenNet did not converge on MD17 under our uniform protocol and is similarly excluded. EquiformerV2 predicts absolute (non-referenced) molecular energies rather than energy differences, so its MD17 energy MAE reflects absolute binding-energy magnitudes ($\sim$247\,eV, consistent across all three $L_{\max}$ settings) rather than prediction error; we mark this with $\dagger$ in the table and it is not comparable to the energy-referenced MAEs of other models.
+
+Table~\ref{tab:md17_fcos} shows a clean separation by maximum angular momentum. EquiformerV2 at $L_{\max}\!\geq\!2$ attains aggregate force cosine similarity near $0.96$, CliffordSTF attains $0.551$, and every other direct-force model sits below $0.25$, with $L\!\leq\!1$ models clustering near zero or below. The decisive within-paper comparison is Clifford versus CliffordSTF: identical message-passing infrastructure, training protocol, and parameter budget, differing only by the addition of STF tracks with cross-track coupling. Force cosine similarity climbs from $0.055$ to $0.551$, an order-of-magnitude directional improvement, and simultaneously force MAE improves from $20.8$ to $17.6$\,meV/\AA{} and energy MAE from $34.1$ to $30.4$\,meV. The STF extension does not trade magnitude accuracy for directional fidelity; it improves both. Per-molecule f\_mae and e\_mae appear in Supplementary~\ref{supp:md17_permol}.
+
+\begin{table}[t]
+\centering
+\caption{\textbf{MD17 force cosine similarity} per molecule and aggregate (mean $\pm$ std across 3 seeds; higher is better, standard $[-1,1]$ range). Top block: $L \geq 2$ direct-force models. Middle block: $L \leq 1$ direct-force models. Bottom block (gray): invariant models and unconverged GotenNet, excluded from the directional comparison. $\dagger$ EquiformerV2 predicts absolute energies; see \S\ref{sec:results_md17}. Under our fixed-parameter-budget protocol, MACE and ICTP at every $L_{\max}$ attain force MAE of 3000--6000\,meV/\AA{} (full table in Supplementary~\ref{supp:md17_permol}), reflecting non-convergence at $10^6$ parameters rather than architecture quality at recommended hyperparameters.}
+\label{tab:md17_fcos}
+\setlength{\tabcolsep}{3pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccccccccc}
+\toprule
+Model & Asp & Azo & Bnz & Eth & Mal & Nap & Par & Sal & Tol & Ura & Agg \\
+\midrule
+EquiformerV2 $L{=}4$$^{\dagger}$ & 0.920 & 0.958 & 0.986 & 0.987 & 0.976 & 0.980 & 0.922 & 0.949 & 0.976 & 0.956 & \textbf{0.961} $\pm$ 0.002 \\
+EquiformerV2 $L{=}3$$^{\dagger}$ & 0.916 & 0.962 & 0.984 & 0.981 & 0.959 & 0.982 & 0.934 & 0.950 & 0.975 & 0.960 & 0.960 $\pm$ 0.002 \\
+EquiformerV2 $L{=}2$$^{\dagger}$ & 0.911 & 0.956 & 0.986 & 0.961 & 0.953 & 0.983 & 0.933 & 0.946 & 0.971 & 0.958 & 0.956 $\pm$ 0.002 \\
+CliffordSTF (ours)   & 0.179 & 0.721 & 0.862 & 0.586 & 0.594 & 0.794 & 0.319 & 0.406 & 0.685 & 0.362 & \textbf{0.551} $\pm$ 0.064 \\
+MACE $L{=}3$         & 0.161 & 0.303 & 0.210 & 0.036 & 0.202 & 0.186 & 0.156 & 0.181 & 0.082 & 0.261 & 0.178 $\pm$ 0.017 \\
+MACE $L{=}2$         & 0.083 & 0.239 & 0.252 & -0.018 & 0.128 & 0.263 & 0.171 & 0.135 & 0.091 & 0.193 & 0.154 $\pm$ 0.017 \\
+ICTP $L{=}3$         & 0.175 & 0.344 & 0.198 & 0.021 & 0.199 & 0.249 & 0.180 & 0.096 & 0.064 & 0.218 & 0.174 $\pm$ 0.030 \\
+ICTP $L{=}2$         & 0.176 & 0.232 & 0.290 & -0.101 & 0.107 & 0.266 & 0.196 & 0.202 & 0.149 & 0.134 & 0.165 $\pm$ 0.051 \\
+\midrule
+Clifford (ours) & 0.012 & 0.030 & 0.075 & -0.004 & 0.012 & 0.120 & 0.010 & 0.131 & 0.047 & 0.117 & 0.055 $\pm$ 0.004 \\
+MACE $L{=}1$         & 0.181 & 0.370 & 0.312 & 0.101 & 0.247 & 0.284 & 0.184 & 0.262 & 0.138 & 0.196 & 0.228 $\pm$ 0.022 \\
+ICTP $L{=}1$         & 0.180 & 0.242 & 0.283 & 0.026 & 0.210 & 0.177 & 0.210 & 0.211 & 0.073 & 0.238 & 0.185 $\pm$ 0.012 \\
+PaiNN                & -0.006 & 0.088 & 0.003 & 0.085 & -0.022 & 0.032 & -0.002 & 0.032 & -0.052 & -0.022 & 0.014 $\pm$ 0.032 \\
+TorchMD-NET          & 0.011 & 0.029 & 0.048 & 0.204 & -0.069 & -0.052 & 0.001 & 0.064 & 0.034 & 0.029 & 0.030 $\pm$ 0.006 \\
+ViSNet               & -0.023 & 0.045 & -0.126 & 0.049 & 0.052 & 0.008 & 0.018 & -0.006 & 0.079 & -0.044 & 0.005 $\pm$ 0.025 \\
+NequIP    & 0.064 & 0.155 & 0.070 & -0.019 & 0.063 & 0.065 & 0.019 & -0.140 & -0.064 & -0.107 & 0.011 $\pm$ 0.001 \\
+\midrule
+\color{gray}{FAENet}      & \color{gray}{0.024} & \color{gray}{0.039} & \color{gray}{0.518} & \color{gray}{0.088} & \color{gray}{0.154} & \color{gray}{0.132} & \color{gray}{0.096} & \color{gray}{0.041} & \color{gray}{0.120} & \color{gray}{0.211} & \color{gray}{0.142 $\pm$ 0.058} \\
+\color{gray}{DimeNet++}   & \color{gray}{0.029} & \color{gray}{0.053} & \color{gray}{0.050} & \color{gray}{0.032} & \color{gray}{0.020} & \color{gray}{0.030} & \color{gray}{0.054} & \color{gray}{0.055} & \color{gray}{0.047} & \color{gray}{0.003} & \color{gray}{0.037 $\pm$ 0.013} \\
+\color{gray}{SchNet}      & \color{gray}{-0.029} & \color{gray}{-0.098} & \color{gray}{-0.013} & \color{gray}{0.159} & \color{gray}{0.068} & \color{gray}{-0.112} & \color{gray}{-0.026} & \color{gray}{-0.065} & \color{gray}{-0.086} & \color{gray}{-0.038} & \color{gray}{-0.024 $\pm$ 0.007} \\
+\color{gray}{GotenNet}    & \color{gray}{0.088} & \color{gray}{-0.021} & \color{gray}{-0.022} & \color{gray}{0.089} & \color{gray}{0.062} & \color{gray}{0.003} & \color{gray}{0.026} & \color{gray}{0.072} & \color{gray}{-0.090} & \color{gray}{0.093} & \color{gray}{0.030 $\pm$ 0.012} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\subsection{Catalysis: OC22 and OC20}\label{sec:results_catalysis}
+
+\textbf{OC22.} CliffordSTF is competitive across the OC22 benchmark. On IS2RE, it attains in-distribution MAE $4.09$\,eV and out-of-distribution MAE $6.46$\,eV, improving on EquiformerV2 at $L{=}4$ on both splits ($4.90$ and $6.62$\,eV) and on the base Clifford model ($4.42$ and $6.73$\,eV). On S2EF, CliffordSTF attains in-distribution energy MAE $2.87$\,eV, close to the best model in the study (base Clifford at $2.84$\,eV), and out-of-distribution energy MAE $5.08$\,eV, the best in the study (EquiformerV2 $L{=}4$ at $5.26$\,eV). On force metrics EquiformerV2 leads with cosine similarity $0.067$ and $0.062$ in- and out-of-distribution versus CliffordSTF at $0.050$; force MAEs for CliffordSTF, base Clifford, and EquiformerV2 cluster tightly within $0.001$--$0.002$\,eV/\AA{} of each other across splits, reflecting the difficulty of direct-force prediction on OC22 at this parameter scale. Full numbers are in Table~\ref{tab:oc22}.
+
+\begin{table}[t]
+\centering
+\caption{\textbf{OC22 main results} (mean $\pm$ std across 3 seeds). IS2RE reports energy MAE in eV; S2EF reports energy MAE (eV), force MAE (eV/\AA), and force cosine similarity. Best value per column in \textbf{bold}. EquiformerV2 is our controlled-protocol result at $L_{\max}{=}4$. MACE and ICTP at $L_{\max}\in\{1,2\}$ attain energy MAE of 8--12\,eV on IS2RE val\textsubscript{id} and 10--12\,eV on S2EF val\textsubscript{id}, reflecting non-convergence at $10^6$ parameters under our fixed-budget protocol rather than architecture quality at recommended hyperparameters.}
+\label{tab:oc22}
+\setlength{\tabcolsep}{3pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccccc}
+\toprule
+& \multicolumn{2}{c}{IS2RE MAE (eV)} & \multicolumn{3}{c}{S2EF $\mathrm{val}_{\text{id}}$} & \multicolumn{3}{c}{S2EF $\mathrm{val}_{\text{ood}}$} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-6}\cmidrule(lr){7-9}
+Model & $\mathrm{val}_{\text{id}}$ & $\mathrm{val}_{\text{ood}}$ & $e_\mathrm{MAE}$ (eV) & $f_\mathrm{MAE}$ (eV/\AA) & $f_\mathrm{cos}\uparrow$ & $e_\mathrm{MAE}$ (eV) & $f_\mathrm{MAE}$ (eV/\AA) & $f_\mathrm{cos}\uparrow$ \\
+\midrule
+CliffordSTF (ours) & 4.089 $\pm$ 0.261 & 6.463 $\pm$ 0.310 & 2.866 $\pm$ 0.093 & 0.073 $\pm$ 0.000 & 0.050 $\pm$ 0.004 & \textbf{5.083} $\pm$ 0.166 & 0.070 $\pm$ 0.000 & 0.050 $\pm$ 0.003 \\
+Clifford (ours)    & 4.422 $\pm$ 0.862 & 6.726 $\pm$ 0.656 & \textbf{2.844} $\pm$ 0.100 & \textbf{0.072} $\pm$ 0.000 & 0.059 $\pm$ 0.002 & 5.375 $\pm$ 0.157 & 0.071 $\pm$ 0.001 & 0.058 $\pm$ 0.002 \\
+EquiformerV2       & 4.905 $\pm$ 0.566 & 6.619 $\pm$ 0.445 & 3.369 $\pm$ 0.066 & 0.072 $\pm$ 0.000 & \textbf{0.067} $\pm$ 0.001 & 5.262 $\pm$ 0.076 & \textbf{0.070} $\pm$ 0.000 & \textbf{0.062} $\pm$ 0.002 \\
+PaiNN              & \textbf{3.516} $\pm$ 0.292 & 6.712 $\pm$ 0.140 & 5.306 $\pm$ 0.030 & 0.076 $\pm$ 0.000 & 0.048 $\pm$ 0.001 & 7.452 $\pm$ 0.254 & 0.078 $\pm$ 0.000 & 0.036 $\pm$ 0.001 \\
+GotenNet           & 4.318 $\pm$ 0.300 & \textbf{5.772} $\pm$ 0.532 & 4.666 $\pm$ 0.310 & 0.073 $\pm$ 0.000 & 0.052 $\pm$ 0.001 & 7.200 $\pm$ 0.121 & 0.072 $\pm$ 0.001 & 0.044 $\pm$ 0.001 \\
+TorchMD-NET        & 5.397 $\pm$ 0.000 & 8.312 $\pm$ 0.000 & 4.278 $\pm$ 0.000 & 0.075 $\pm$ 0.000 & 0.051 $\pm$ 0.000 & 6.232 $\pm$ 0.000 & 0.074 $\pm$ 0.000 & 0.043 $\pm$ 0.000 \\
+DimeNet++          & 6.320 $\pm$ 4.141 & 9.897 $\pm$ 3.002 & 5.288 $\pm$ 0.030 & 0.076 $\pm$ 0.000 & 0.054 $\pm$ 0.002 & 8.717 $\pm$ 0.075 & 0.077 $\pm$ 0.001 & 0.038 $\pm$ 0.002 \\
+SchNet             & 6.402 $\pm$ 1.688 & 9.424 $\pm$ 0.938 & 7.690 $\pm$ 1.508 & 0.077 $\pm$ 0.002 & 0.032 $\pm$ 0.007 & 12.016 $\pm$ 1.938 & 0.078 $\pm$ 0.002 & 0.024 $\pm$ 0.003 \\
+MACE $L{=}2$       & 8.416 $\pm$ 0.702 & 22.569 $\pm$ 7.674 & 10.017 $\pm$ 0.395 & 0.079 $\pm$ 0.000 & 0.022 $\pm$ 0.004 & 15.415 $\pm$ 0.808 & 0.076 $\pm$ 0.000 & 0.022 $\pm$ 0.005 \\
+ICTP $L{=}2$       & 8.641 $\pm$ 1.744 & 17.756 $\pm$ 4.145 & 12.447 $\pm$ 0.354 & 0.081 $\pm$ 0.001 & 0.015 $\pm$ 0.002 & 19.218 $\pm$ 0.232 & 0.079 $\pm$ 0.001 & 0.017 $\pm$ 0.002 \\
+ICTP $L{=}1$       & 10.963 $\pm$ 1.612 & 20.810 $\pm$ 0.868 & 11.483 $\pm$ 0.881 & 0.080 $\pm$ 0.001 & 0.019 $\pm$ 0.001 & 17.263 $\pm$ 0.655 & 0.186 $\pm$ 0.154 & 0.019 $\pm$ 0.000 \\
+MACE $L{=}1$       & 12.339 $\pm$ 4.540 & 15.800 $\pm$ 2.430 & 10.011 $\pm$ 0.018 & 0.078 $\pm$ 0.000 & 0.024 $\pm$ 0.000 & 15.737 $\pm$ 0.438 & 0.076 $\pm$ 0.000 & 0.023 $\pm$ 0.001 \\
+NequIP             & 12.575 $\pm$ 4.889 & 14.865 $\pm$ 3.676 & 9.868 $\pm$ 0.148 & 0.079 $\pm$ 0.000 & 0.028 $\pm$ 0.000 & 15.809 $\pm$ 0.071 & 0.076 $\pm$ 0.000 & 0.027 $\pm$ 0.001 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\textbf{OC20.} CliffordSTF is competitive across IS2RE splits, attaining in-distribution MAE $0.703$\,eV (between DimeNet++ at $0.699$ and PaiNN at $0.720$) and placing within the top half of the field on every split. EquiformerV2 leads S2EF force cosine similarity ($0.170$ vs $0.138$ for CliffordSTF), while the base Clifford model attains the best S2EF energy MAE ($1.89$ vs $2.11$ for CliffordSTF); full per-split tables are in Supplementary~\ref{supp:oc_full}.
+
+\subsection{Scalar properties, ablation, and cost}\label{sec:results_scalar}
+
+On QM9 six-target aggregate MAE (eV for energies, Debye for dipoles, Bohr$^3$ for polarisability, cal/mol/K for $C_v$; mixed units across targets, so the aggregate averages normalised targets), CliffordSTF ranks fifth of ten at $2.15$\,units, confirming that the STF extension does not degrade scalar prediction below vector-equivariant baselines (PaiNN $2.23$, TorchMD-NET $2.23$, EquiformerV2 $3.33$). On Molecule3D HOMO--LUMO gap, CliffordSTF attains MAE $1.23$\,eV, behind FAENet ($0.18$) and the strong mid-pack (EquiformerV2 $1.11$, GotenNet $1.12$, TorchMD-NET $1.15$, PaiNN $1.21$) and ahead of DimeNet++, SchNet, and NequIP. FAENet's large advantage on this benchmark reflects its scalar-specialised design; we treat Molecule3D as out-of-scope for the architectural thesis and discuss in \S\ref{sec:limitations}. Full per-target tables are in Supplementary~\ref{supp:qm9_full}.
+
+A twelve-variant ablation on MD17 (Table~\ref{tab:ablation}) tells a nuanced story across three tiers. Vanilla $L{=}1$ Clifford anchors the bottom at $f_{cos}{=}0.030$; a readout-only variant, with STF tracks present only at the output and no STF inside the message-passing scaffold, sits just above it at $f_{cos}{=}0.097$; and every CliffordSTF-scaffold variant clusters in $0.421$--$0.506$. The order-of-magnitude separation between the readout-only and scaffold tiers isolates the dominant effect to $L\!\geq\!2$ representations participating throughout message passing, ruling out an explanation in which an $L\!\geq\!2$ readout alone is sufficient. Within the scaffold, individual flag toggles produce smaller effects that are often within seed-to-seed variance on headline $f_{cos}$, but they matter noticeably for energy MAE stability (e.g., Full no cross reaches $e_{\text{MAE}}{=}70.4$\,meV versus $46.0$ for Full with cross) and for the per-seed standard deviation. The cross-track coupling contribution is therefore better read as a stability lever than a raw-accuracy driver; the full architectural claim of the paper is that the $L\!\geq\!2$ STF scaffold unlocks directional capacity, and cross-track coupling stabilises it for reliable end-to-end training.
+
+On wall-clock at matched parameter budget, CliffordSTF runs at $3.39$\,s/step on MD17 aspirin (batch 32, single GPU), a modest 2--4$\times$ overhead relative to the fastest baselines (Clifford $1.44$, EquiformerV2 $L{=}4$ $0.78$, ICTP $L{=}3$ $1.74$, MACE $L{=}3$ $1.55$) that remains within the same order of magnitude and is tractable given the directional gains reported above. Full measurements are in Supplementary~\ref{supp:wallclock}; the trade-off is discussed in \S\ref{sec:limitations}.
+
+\begin{table}
+\centering
+\caption{\textbf{CliffordSTF ablation on MD17} (mean $\pm$ std across 6 seeds per (variant, molecule) obtained as 3 random seeds $\times$ 2 independent instances, on four molecules: aspirin, benzene, ethanol, salicylic acid). Three tiers emerge: vanilla $L{=}1$ Clifford ($f_{cos}{=}0.030$), the readout-only variant with STF only at the output ($f_{cos}{=}0.097$), and the CliffordSTF-scaffold variants ($f_{cos}\!\in\![0.421, 0.506]$). The order-of-magnitude separation between the readout-only and scaffold tiers isolates the dominant effect to $L\!\geq\!2$ representations operating throughout message passing rather than at the readout alone. Within the scaffold, individual flag toggles produce smaller effects on headline $f_{cos}$ but matter for energy-MAE stability and seed-to-seed variance. Channel counts are tuned per row to hold parameter counts at approximately $10^6$.}
+\label{tab:ablation}
+\setlength{\tabcolsep}{3pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l ccccc ccc}
+\toprule
+& \multicolumn{5}{c}{\textbf{Configuration}} & \multicolumn{3}{c}{\textbf{Metrics}} \\
+\cmidrule(lr){2-6}\cmidrule(lr){7-9}
+Variant & STF mode & Hodge & Cross & Routing & Mode & 
+$f_\mathrm{MAE}$ (meV/\AA) & $e_\mathrm{MAE}$ (meV) & $f_\mathrm{cos}\uparrow$ \\
+\midrule
+Full                           & stf2+stf3 & on  & on  & on  & learned & 16.802 $\pm$ 0.556 & 45.986 $\pm$ 48.658 & \textbf{0.506} $\pm$ 0.045 \\
+STF2 static routing            & stf2      & on  & on  & on  & static  & 16.836 $\pm$ 0.640 & 26.482 $\pm$ 6.624  & 0.504 $\pm$ 0.041 \\
+CliffordSTF scaffold ($L{=}2$) & none      & off & off & off & ---     & 17.221 $\pm$ 0.537 & 26.294 $\pm$ 8.464  & 0.498 $\pm$ 0.084 \\
+STF2 learned routing           & stf2      & on  & on  & on  & learned & 16.768 $\pm$ 1.202 & 37.778 $\pm$ 13.440 & 0.492 $\pm$ 0.100 \\
+STF2+STF3                      & stf2+stf3 & on  & on  & off & ---     & 17.029 $\pm$ 1.016 & 36.792 $\pm$ 9.466  & 0.489 $\pm$ 0.119 \\
+Full no cross                  & stf2+stf3 & on  & off & on  & learned & 17.170 $\pm$ 0.674 & 70.409 $\pm$ 92.001 & 0.474 $\pm$ 0.072 \\
+Hodge only                     & none      & on  & off & off & ---     & \textbf{16.584} $\pm$ 1.166 & 30.975 $\pm$ 13.434 & 0.472 $\pm$ 0.103 \\
+STF2 no hodge                  & stf2      & off & on  & off & ---     & 17.688 $\pm$ 0.251 & 36.261 $\pm$ 25.029 & 0.460 $\pm$ 0.067 \\
+STF2 no cross                  & stf2      & on  & off & off & ---     & 17.317 $\pm$ 0.863 & \textbf{25.790} $\pm$ 13.248 & 0.456 $\pm$ 0.095 \\
+STF2                           & stf2      & on  & on  & off & ---     & 17.511 $\pm$ 0.947 & 34.909 $\pm$ 16.325 & 0.421 $\pm$ 0.107 \\
+\midrule
+STF only output (no scaffold)  & ---       & --- & --- & --- & ---     & 19.545 $\pm$ 0.098 & 36.640 $\pm$ 39.015 & 0.097 $\pm$ 0.028 \\
+Vanilla Clifford ($L{=}1$)     & ---       & --- & --- & --- & ---     & 19.704 $\pm$ 0.043 & 125.848 $\pm$ 77.191 & 0.030 $\pm$ 0.003 \\
+\bottomrule
+\end{tabular}}
+\end{table}

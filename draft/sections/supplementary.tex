@@ -209,13 +209,181 @@ CliffordSTF is a single configurable architecture parameterised by five ablation
   \end{minipage}
 \end{table}
 
-\subsection{rMD17 per-molecule force and energy MAE}\label{supp:md17_permol}
+\subsection{Model architecture hyperparameters per benchmark}\label{supp:model_settings}
 
-Table~\ref{tab:md17_permol_full} reports per-molecule force MAE (meV/\AA) and energy MAE (meV) for all models in the main-text rMD17 evaluation, in native units and averaged across seeds with standard deviations, complementing the force cosine similarity table in the main paper (Table~\ref{tab:md17_fcos}). The Clifford-to-CliffordSTF force cosine improvement observed in Table~\ref{tab:md17_fcos} occurs at comparable force and energy magnitude accuracy, which is the content of the "matched magnitude" claim in the main text.
+Tables~\ref{tab:supp_settings_md17}--\ref{tab:supp_settings_md17_ablation} list the architectural hyperparameters used per benchmark for every model in the main study. Cutoffs are in \AA{}; Boolean flags are abbreviated T/F. Training-time settings (optimiser, epochs, batch size, loss, seeds) are reported separately in Table~\ref{tab:training-details}; per-model parameter counts are in Table~\ref{tab:wallclock}.
+
+\subsubsection{MD17}
+
+Table~\ref{tab:supp_settings_md17} lists the per-model architecture hyperparameters used on rMD17. MACE, ICTP, and EquiformerV2 are run at three $L_{\max}$ values to trace angular resolution within each family at the matched ${\sim}10^6$-parameter budget, with EquiformerV2 reducing its sphere channel count from $40$ at $L_{\max}\!=\!2$ to $14$ at $L_{\max}\!=\!4$ to absorb the additional irreps. CliffordSTF runs at $C\!=\!60$ channels (versus $C\!=\!48$ for the base $L\!\leq\!1$ Clifford configuration on MD17) so that the STF$_2$ and STF$_3$ tracks fit within the same parameter envelope; cutoffs are $5$\,\AA{} for the equivariant transformers (TorchMD-Net, ViSNet) and NequIP, and $6$\,\AA{} elsewhere.
 
 \begin{table}[h]
 \centering
-\caption{\textbf{rMD17 per-molecule force and energy MAE} (mean $\pm$ std across 3 seeds, native units: meV/\AA{} for force MAE, meV for energy MAE). Top block: $L\!\geq\!2$ direct-force models. Middle block: $L\!\leq\!1$ direct-force models. Bottom block (gray): strictly invariant models (SchNet, DimeNet++) whose forces come from energy gradients. $\ast$ FAENet predicts forces directly but uses stochastic frame-averaged equivariance; GotenNet is $L\!\geq\!2$ ($\mathtt{lmax}{=}2$) but did not converge under our fixed-budget protocol---both are listed in their natural $L$-cohort for completeness and excluded from the per-architecture directional comparison in the main text. Under the fixed $10^6$-parameter budget, MACE and ICTP at every $L_{\max}$ attain force MAE in the 3{,}000--6{,}000\,meV/\AA{} range, reflecting non-convergence at this capacity rather than architecture quality at recommended hyperparameters. $\dagger$ EquiformerV2 predicts absolute (non-referenced) molecular energies; its energy MAE in panel (b) reflects absolute binding-energy magnitudes ($\sim$247\,eV consistent across all three $L_{\max}$ settings), not prediction error, and is not comparable to the energy-referenced baselines.}
+\caption{Model architecture hyperparameters used on \textbf{MD17}. All runs use Adam, no weight decay, batch size 32, learning rate 0.0001, 250 epochs, MSE loss, early-stopping patience 30. Cutoff is in \AA; Boolean flags are abbreviated T/F.}
+\label{tab:supp_settings_md17}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l c l}
+\toprule
+Model & Cutoff & Architecture \\
+\midrule
+SchNet & 6 & hidden=192, filters=192, layers=6, gauss=50 \\
+PaiNN & 6 & hidden=144, layers=4, rbf=64 \\
+DimeNet++ & 6 & hidden=128, blocks=4, radial=6, spherical=7, basis emb=8, int emb=64, out emb=128 \\
+FAENet & 6 & hidden=320, filters=128, layers=4, FA=3D, FA-method=stochastic, MP-type=updownscale\_base \\
+GotenNet & 6 & basis=96, layers=5 \\
+TorchMD-Net & 5 & emb=104, layers=6, heads=8, rbf=56, rbf type=expnorm, arch=equivariant-transformer \\
+ViSNet & 5 & hidden=96, layers=6, heads=8, rbf=32, $L_{\max}$=1, vertex=F \\
+NequIP & 5 & features=44, layers=4, $L_{\max}$=1, bessels=8, parity=T \\
+MACE L=1 & 6 & hidden=62x0e + 62x1o, layers=2, max ell=1, corr=3, bessel=8 \\
+MACE L=2 & 6 & hidden=49x0e + 49x1o + 49x2e, layers=2, max ell=2, corr=3, bessel=8 \\
+MACE L=3 & 6 & hidden=28x0e + 28x1o + 28x2e + 28x3o, layers=2, max ell=3, corr=3, bessel=8 \\
+ICTP L=1 & 6 & hidden=10, layers=2, $L_{\max}$ hid=1, $L_{\max}$ edge=3, corr=3, basis=8, prod=10 \\
+ICTP L=2 & 6 & hidden=8, layers=2, $L_{\max}$ hid=2, $L_{\max}$ edge=3, corr=3, basis=8, prod=8 \\
+ICTP L=3 & 6 & hidden=7, layers=2, $L_{\max}$ hid=3, $L_{\max}$ edge=3, corr=3, basis=8, prod=7 \\
+EquiformerV2 L=2 & 6 & sphere=40, layers=2, heads=4, $L_{\max}$=2, $M_{\max}$=2, attn $\alpha$=16, attn hid=20, attn val=8, ffn=64 \\
+EquiformerV2 L=3 & 6 & sphere=24, layers=2, heads=4, $L_{\max}$=3, $M_{\max}$=2, attn $\alpha$=16, attn hid=20, attn val=8, ffn=64 \\
+EquiformerV2 L=4 & 6 & sphere=14, layers=2, heads=4, $L_{\max}$=4, $M_{\max}$=2, attn $\alpha$=16, attn hid=20, attn val=8, ffn=64 \\
+Clifford & 6 & channels=48, layers=5, rbf=50, hidden out=48 \\
+CliffordSTF & 6 & channels=60, layers=5, rbf=50, STF mode=stf2+stf3, routing=learned, adapt rt=T, cross=T, Hodge F=T, GP rdo=F, self-int=F \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\subsubsection{OC20 \& OC22 (IS2RE \& S2EF)}
+
+Table~\ref{tab:supp_settings_oc} lists the architectures used for OC20 and OC22 on both IS2RE and S2EF; the per-model architectural hyperparameters are identical between the two benchmarks (same channel widths, layer counts, $L_{\max}$ choices, and Clifford-track configuration on every model), so the OC20 $\to$ OC22 comparison isolates dataset effects rather than architectural differences. The two benchmarks differ only in their per-model training schedules, captured in the caption. All models share a $6$\,\AA{} cutoff; MACE and ICTP are run at $L_{\max}\!\in\!\{1, 2\}$ (the $L\!=\!3$ configurations from rMD17 are dropped because they did not fit within the budget at OC graph density), and EquiformerV2 uses a single $L_{\max}\!=\!4$ configuration with a smaller sphere size (sphere=$18$, versus $14$--$40$ on rMD17) to keep parameter count near $10^6$. The base Clifford row is configured with $\mathrm{max\_grade}\!=\!1$ and the $\ell\!=\!2$ flag disabled, recovering the $L\!\leq\!1$ multivector substrate that the CliffordSTF $L\!\geq\!2$ extension is benchmarked against in the main results.
+
+\begin{table}[h]
+\centering
+\caption{Model architecture hyperparameters used on \textbf{OC20 \& OC22 (IS2RE \& S2EF)}. The per-model architecture is identical between OC20 and OC22; only training schedules differ. \textbf{OC20:} all runs use Adam, no weight decay, batch size 16, learning rate 0.0001, 50 epochs, early-stopping patience 30; L1 loss on IS2RE for all models, MSE loss on S2EF for all models. \textbf{OC22:} all runs use Adam, no weight decay, batch size 16, learning rate 0.0001; on IS2RE, 200 epochs and patience 30 for SchNet, PaiNN, DimeNet++, NequIP, EquiformerV2, CliffordSTF, 150 epochs and patience 50 for MACE L=1, MACE L=2, ICTP L=1, ICTP L=2, 50 epochs and patience 30 for GotenNet, TorchMD-Net, Clifford (L1 loss throughout); on S2EF, 50 epochs, MSE loss, patience 30 for all models. Cutoff is in \AA; Boolean flags are abbreviated T/F.}
+\label{tab:supp_settings_oc}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l c l}
+\toprule
+Model & Cutoff & Architecture \\
+\midrule
+SchNet & 6 & hidden=192, filters=192, layers=6, gauss=50 \\
+PaiNN & 6 & hidden=144, layers=4, rbf=64 \\
+DimeNet++ & 6 & hidden=128, blocks=4, radial=6, spherical=7, basis emb=8, int emb=64, out emb=128 \\
+GotenNet & 6 & basis=96, layers=5 \\
+TorchMD-Net & 6 & emb=104, layers=6, heads=8, rbf=56, rbf type=expnorm, arch=equivariant-transformer \\
+NequIP & 6 & features=44, layers=4, $L_{\max}$=1, bessels=8, parity=T \\
+MACE L=1 & 6 & hidden=62x0e + 62x1o, layers=2, max ell=1, corr=3, bessel=8 \\
+MACE L=2 & 6 & hidden=49x0e + 49x1o + 49x2e, layers=2, max ell=2, corr=3, bessel=8 \\
+ICTP L=1 & 6 & hidden=10, layers=2, $L_{\max}$ hid=1, $L_{\max}$ edge=3, corr=3, basis=8, prod=10 \\
+ICTP L=2 & 6 & hidden=8, layers=2, $L_{\max}$ hid=2, $L_{\max}$ edge=3, corr=3, basis=8, prod=8 \\
+EquiformerV2 & 6 & sphere=18, layers=2, heads=4, $L_{\max}$=4, $M_{\max}$=2, attn $\alpha$=16, attn hid=20, attn val=8, ffn=64 \\
+Clifford & 6 & channels=80, layers=5, rbf=50, hidden out=80, max grade=1, $\ell{=}2$=F \\
+CliffordSTF & 6 & channels=60, layers=5, rbf=50, STF mode=stf2+stf3, routing=learned, adapt rt=T, cross=T, Hodge F=T, GP rdo=F, self-int=F \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\subsubsection{QM9}
+
+Table~\ref{tab:supp_settings_qm9} lists the architectures used for the QM9 scalar-target benchmark. The QM9 model set is a subset of the rMD17 lineup: MACE and ICTP are not evaluated, EquiformerV2 is reported at a single $L_{\max}\!=\!4$ configuration with a larger spherical-channel count (sphere=$30$) than its catalysis runs, and the base $L\!\leq\!1$ Clifford row is omitted because the directional diagnostic that motivates its inclusion on rMD17 does not bear directly on scalar prediction. CliffordSTF uses the same $C\!=\!60$ channel count and the same STF$_2$+STF$_3$ configuration as on the other benchmarks.
+
+\begin{table}[h]
+\centering
+\caption{Model architecture hyperparameters used on \textbf{QM9}. All runs use Adam, no weight decay, batch size 128, learning rate 0.0001, 250 epochs, MSE loss, early-stopping patience 30. Cutoff is in \AA; Boolean flags are abbreviated T/F.}
+\label{tab:supp_settings_qm9}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l c l}
+\toprule
+Model & Cutoff & Architecture \\
+\midrule
+SchNet & 6 & hidden=192, filters=192, layers=6, gauss=50 \\
+PaiNN & 6 & hidden=144, layers=4, rbf=64 \\
+DimeNet++ & 6 & hidden=128, blocks=4, radial=6, spherical=7, basis emb=8, int emb=64, out emb=128 \\
+FAENet & 6 & hidden=320, filters=128, layers=4, FA=3D, FA-method=stochastic, MP-type=updownscale\_base \\
+GotenNet & 6 & basis=96, layers=5 \\
+TorchMD-Net & 5 & emb=104, layers=6, heads=8, rbf=56, rbf type=expnorm, arch=equivariant-transformer \\
+ViSNet & 5 & hidden=96, layers=6, heads=8, rbf=32, $L_{\max}$=1, vertex=F \\
+NequIP & 5 & features=44, layers=4, $L_{\max}$=1, bessels=8, parity=T \\
+EquiformerV2 & 6 & sphere=30, layers=2, heads=4, $L_{\max}$=4, $M_{\max}$=2, attn $\alpha$=16, attn hid=20, attn val=8, ffn=64 \\
+CliffordSTF & 6 & channels=60, layers=5, rbf=50, STF mode=stf2+stf3, routing=learned, adapt rt=T, cross=T, Hodge F=T, GP rdo=F, self-int=F \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\subsubsection{Molecule3D}
+
+Table~\ref{tab:supp_settings_molecule3d} lists the architectures used for the Molecule3D HOMO--LUMO gap benchmark. The model set is identical to QM9 with ViSNet additionally not reported; per-model architectural hyperparameters are otherwise unchanged from QM9 (same channel counts, layer counts, and $L_{\max}$ values per model), isolating the inter-benchmark difference to dataset scale and target rather than architecture.
+
+\begin{table}[h]
+\centering
+\caption{Model architecture hyperparameters used on \textbf{Molecule3D}. All runs use Adam, no weight decay, batch size 20, learning rate 0.0001, 100 epochs, L1 loss, early-stopping patience 30. Cutoff is in \AA; Boolean flags are abbreviated T/F.}
+\label{tab:supp_settings_molecule3d}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l c l}
+\toprule
+Model & Cutoff & Architecture \\
+\midrule
+SchNet & 6 & hidden=192, filters=192, layers=6, gauss=50 \\
+PaiNN & 6 & hidden=144, layers=4, rbf=64 \\
+DimeNet++ & 6 & hidden=128, blocks=4, radial=6, spherical=7, basis emb=8, int emb=64, out emb=128 \\
+FAENet & 6 & hidden=320, filters=128, layers=4, FA=3D, FA-method=stochastic, MP-type=updownscale\_base \\
+GotenNet & 6 & basis=96, layers=5 \\
+TorchMD-Net & 5 & emb=104, layers=6, heads=8, rbf=56, rbf type=expnorm, arch=equivariant-transformer \\
+NequIP & 5 & features=44, layers=4, $L_{\max}$=1, bessels=8, parity=T \\
+EquiformerV2 & 6 & sphere=30, layers=2, heads=4, $L_{\max}$=4, $M_{\max}$=2, attn $\alpha$=16, attn hid=20, attn val=8, ffn=64 \\
+CliffordSTF & 6 & channels=60, layers=5, rbf=50, STF mode=stf2+stf3, routing=learned, adapt rt=T, cross=T, Hodge F=T, GP rdo=F, self-int=F \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\subsubsection{MD17 ablation}
+
+Table~\ref{tab:supp_settings_md17_ablation} lists the architectural hyperparameters of the twelve CliffordSTF ablation variants together with the vanilla $L\!\leq\!1$ Clifford baseline used in the controlled rMD17 ablation (Table~\ref{tab:ablation}). Channel counts are tuned per variant ($C\!\in\!\{60, 64, 76, 80\}$) so that every variant lands within $\pm 50$\% of the $10^6$-parameter target; the five ablation flags ($\mathrm{stf\_mode}$, $\mathrm{routing\_mode}$, $\mathrm{adapt\_rt}$, $\mathrm{cross}$, $\mathrm{Hodge\_F}$) toggle the architectural extensions documented in Supplementary~\ref{supp:variants}. Setting all flags to their off/none state recovers the base Clifford row bit-for-bit, providing the clean $L\!\leq\!1$ baseline against which every CliffordSTF extension is measured.
+
+\begin{table}[h]
+\centering
+\caption{Model architecture hyperparameters used on \textbf{MD17 ablation}. All runs use Adam, no weight decay, batch size 32, learning rate 0.0001, 250 epochs, MSE loss, early-stopping patience 30. Cutoff is in \AA; Boolean flags are abbreviated T/F.}
+\label{tab:supp_settings_md17_ablation}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l c l}
+\toprule
+Model & Cutoff & Architecture \\
+\midrule
+STF (full) & 6 & channels=60, layers=5, rbf=50, STF mode=stf2+stf3, routing=learned, adapt rt=T, cross=T, Hodge F=T, GP rdo=F, self-int=F \\
+STF$_2$ (static routing) & 6 & channels=64, layers=5, rbf=50, STF mode=stf2, routing=static, adapt rt=T, cross=T, Hodge F=T, GP rdo=F, self-int=F \\
+STF baseline & 6 & channels=76, layers=5, rbf=50, STF mode=none, routing=none, adapt rt=F, cross=F, Hodge F=F, GP rdo=F, self-int=F \\
+STF$_2$ (learned routing) & 6 & channels=64, layers=5, rbf=50, STF mode=stf2, routing=learned, adapt rt=T, cross=T, Hodge F=T, GP rdo=F, self-int=F \\
+STF$_2$+STF$_3$ & 6 & channels=60, layers=5, rbf=50, STF mode=stf2+stf3, routing=none, adapt rt=F, cross=T, Hodge F=T, GP rdo=F, self-int=F \\
+STF (full, no cross-track) & 6 & channels=60, layers=5, rbf=50, STF mode=stf2+stf3, routing=none, adapt rt=F, cross=F, Hodge F=T, GP rdo=F, self-int=F \\
+STF (Hodge only) & 6 & channels=76, layers=5, rbf=50, STF mode=none, routing=none, adapt rt=F, cross=F, Hodge F=T, GP rdo=F, self-int=F \\
+STF$_2$ (no Hodge) & 6 & channels=64, layers=5, rbf=50, STF mode=stf2, routing=none, adapt rt=F, cross=T, Hodge F=F, GP rdo=F, self-int=F \\
+STF$_2$ (no cross-track) & 6 & channels=64, layers=5, rbf=50, STF mode=stf2, routing=none, adapt rt=F, cross=F, Hodge F=T, GP rdo=F, self-int=F \\
+STF$_2$ & 6 & channels=64, layers=5, rbf=50, STF mode=stf2, routing=none, adapt rt=F, cross=T, Hodge F=T, GP rdo=F, self-int=F \\
+STF (full, no routing) & 6 & channels=60, layers=5, rbf=50, STF mode=stf2+stf3, routing=none, adapt rt=F, cross=T, Hodge F=T, GP rdo=F, self-int=F \\
+STF (output only) & 6 & channels=56, layers=5, rbf=50, STF mode=stf2+stf3, routing=none, adapt rt=F, cross=T, Hodge F=F, GP rdo=F, self-int=F \\
+Clifford (vanilla) & 6 & channels=80, layers=5, rbf=50, hidden out=80, max grade=1, $\ell{=}2$=F \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\subsection{rMD17 per-molecule force and energy MAE}\label{supp:md17_permol}
+
+Table~\ref{tab:md17_permol_full} reports per-molecule force MAE (meV/\AA) and energy MAE (meV) for all models in the main-text rMD17 evaluation, in native units and averaged across seeds with standard deviations, complementing the force cosine similarity table in the main paper (Table~\ref{tab:md17_fcos}). The Clifford-to-CliffordSTF force cosine improvement observed in Table~\ref{tab:md17_fcos} occurs at comparable force and energy magnitude accuracy, which is the content of the "matched magnitude" claim in the main text. Reading panel (a), CliffordSTF's $17.6$\,meV/\AA{} aggregate force MAE sits between the converged $L\!\geq\!2$ tier (EquiformerV2 at $3.9$--$4.2$\,meV/\AA{} across $L_{\max}\!\in\!\{2,3,4\}$) and the base Clifford row at $20.8$\,meV/\AA{}, and improves on the base Clifford on every individual molecule. Panel (b) shows the energy-MAE picture parallels the force result: CliffordSTF and the base Clifford track each other within seed variance ($30.4$ vs.\ $34.1$\,meV aggregate), confirming that the STF extension does not trade scalar accuracy for directional accuracy.
+
+\begin{table}[h]
+\centering
+\caption{\textbf{rMD17 per-molecule force and energy MAE} (mean $\pm$ std across 3 seeds, native units: meV/\AA{} for force MAE, meV for energy MAE). Values $\geq 1{,}000$ are rendered in k-notation (e.g., \texttt{12.8k $\pm$ 2.0k} $\equiv$ \texttt{12{,}800 $\pm$ 2{,}000}) to keep converged-model rows visually distinct from non-converged baselines. Top block: $L\!\geq\!2$ direct-force models. Middle block: $L\!\leq\!1$ direct-force models. Bottom block (gray): strictly invariant models (SchNet, DimeNet++) whose forces come from energy gradients. $\ast$ FAENet predicts forces directly but uses stochastic frame-averaged equivariance; GotenNet is $L\!\geq\!2$ ($\mathtt{lmax}{=}2$) but did not converge under our fixed-budget protocol---both are listed in their natural $L$-cohort for completeness and excluded from the per-architecture directional comparison in the main text. Under the fixed $10^6$-parameter budget, MACE and ICTP at every $L_{\max}$ attain force MAE in the 3{,}000--6{,}000\,meV/\AA{} range, reflecting non-convergence at this capacity rather than architecture quality at recommended hyperparameters. $\dagger$ EquiformerV2 predicts absolute (non-referenced) molecular energies; its energy MAE in panel (b) reflects absolute binding-energy magnitudes ($\sim$247\,eV consistent across all three $L_{\max}$ settings), not prediction error, and is not comparable to the energy-referenced baselines.}
 \label{tab:md17_permol_full}
 \setlength{\tabcolsep}{3pt}
 \scriptsize
@@ -229,23 +397,23 @@ EquiformerV2 $L{=}4$ & 6.172 $\pm$ 0.239 & 4.451 $\pm$ 0.274 & 1.805 $\pm$ 0.072
 EquiformerV2 $L{=}3$ & 6.290 $\pm$ 0.283 & 4.237 $\pm$ 0.131 & 1.917 $\pm$ 0.214 & 2.605 $\pm$ 0.220 & 4.246 $\pm$ 0.146 & 2.973 $\pm$ 0.066 & 5.308 $\pm$ 0.221 & 4.872 $\pm$ 0.220 & 3.316 $\pm$ 0.202 & 4.369 $\pm$ 0.048 & 4.013 $\pm$ 0.081 \\
 EquiformerV2 $L{=}2$ & 6.281 $\pm$ 0.239 & 4.563 $\pm$ 0.329 & 1.830 $\pm$ 0.077 & 3.775 $\pm$ 0.299 & 4.569 $\pm$ 0.549 & 2.945 $\pm$ 0.094 & 5.292 $\pm$ 0.322 & 5.117 $\pm$ 0.178 & 3.611 $\pm$ 0.241 & 4.483 $\pm$ 0.180 & 4.247 $\pm$ 0.108 \\
 CliffordSTF (ours) & 21.419 $\pm$ 0.453 & 17.944 $\pm$ 2.527 & 9.692 $\pm$ 0.675 & 15.302 $\pm$ 4.451 & 17.696 $\pm$ 3.218 & 16.657 $\pm$ 2.360 & 20.071 $\pm$ 1.390 & 19.820 $\pm$ 1.137 & 16.113 $\pm$ 2.414 & 20.930 $\pm$ 0.907 & 17.564 $\pm$ 0.671 \\
-MACE $L{=}3$ & 6117.296 $\pm$ 1045.204 & 4916.265 $\pm$ 1107.360 & 1011.472 $\pm$ 229.723 & 1352.741 $\pm$ 247.489 & 2571.485 $\pm$ 607.725 & 3140.910 $\pm$ 365.422 & 4938.932 $\pm$ 1195.524 & 5961.470 $\pm$ 1765.806 & 2595.720 $\pm$ 304.071 & 4883.436 $\pm$ 158.271 & 3748.973 $\pm$ 422.509 \\
-MACE $L{=}2$ & 8212.530 $\pm$ 863.580 & 5272.555 $\pm$ 1033.272 & 1311.306 $\pm$ 241.303 & 2056.257 $\pm$ 538.600 & 2943.174 $\pm$ 54.572 & 5168.128 $\pm$ 1141.344 & 7678.465 $\pm$ 1345.402 & 6446.776 $\pm$ 2230.229 & 4377.123 $\pm$ 926.118 & 4871.859 $\pm$ 529.905 & 4833.817 $\pm$ 183.631 \\
-ICTP $L{=}3$ & 12809.127 $\pm$ 1953.458 & 6045.878 $\pm$ 2071.893 & 1650.979 $\pm$ 758.516 & 1900.323 $\pm$ 143.533 & 3930.483 $\pm$ 592.739 & 5582.228 $\pm$ 776.891 & 7676.068 $\pm$ 923.843 & 7755.930 $\pm$ 2513.579 & 3375.720 $\pm$ 313.583 & 3668.267 $\pm$ 675.178 & 5439.500 $\pm$ 596.119 \\
-ICTP $L{=}2$ & 7457.093 $\pm$ 1500.372 & 6861.405 $\pm$ 954.075 & 2256.593 $\pm$ 231.279 & 1906.891 $\pm$ 201.558 & 2335.403 $\pm$ 1092.071 & 5643.915 $\pm$ 1367.142 & 7668.745 $\pm$ 2809.084 & 8178.538 $\pm$ 1889.185 & 3485.879 $\pm$ 1020.475 & 7056.878 $\pm$ 634.232 & 5285.134 $\pm$ 191.422 \\
-GotenNet$^{\ast}$ & 28067.188 $\pm$ 23970.476 & 4309.436 $\pm$ 3233.487 & 14030.201 $\pm$ 22086.315 & 2179.120 $\pm$ 2694.296 & 7465.502 $\pm$ 12315.898 & 3165.459 $\pm$ 1638.753 & 8300.956 $\pm$ 10014.532 & 3925.104 $\pm$ 3722.721 & 2533.055 $\pm$ 3326.320 & 14305.975 $\pm$ 14812.231 & 8828.200 $\pm$ 2664.563 \\
+MACE $L{=}3$ & 6.1k $\pm$ 1.0k & 4.9k $\pm$ 1.1k & 1.0k $\pm$ 0.2k & 1.4k $\pm$ 0.2k & 2.6k $\pm$ 0.6k & 3.1k $\pm$ 0.4k & 4.9k $\pm$ 1.2k & 6.0k $\pm$ 1.8k & 2.6k $\pm$ 0.3k & 4.9k $\pm$ 0.2k & 3.7k $\pm$ 0.4k \\
+MACE $L{=}2$ & 8.2k $\pm$ 0.9k & 5.3k $\pm$ 1.0k & 1.3k $\pm$ 0.2k & 2.1k $\pm$ 0.5k & 2.9k $\pm$ 0.1k & 5.2k $\pm$ 1.1k & 7.7k $\pm$ 1.3k & 6.4k $\pm$ 2.2k & 4.4k $\pm$ 0.9k & 4.9k $\pm$ 0.5k & 4.8k $\pm$ 0.2k \\
+ICTP $L{=}3$ & 12.8k $\pm$ 2.0k & 6.0k $\pm$ 2.1k & 1.7k $\pm$ 0.8k & 1.9k $\pm$ 0.1k & 3.9k $\pm$ 0.6k & 5.6k $\pm$ 0.8k & 7.7k $\pm$ 0.9k & 7.8k $\pm$ 2.5k & 3.4k $\pm$ 0.3k & 3.7k $\pm$ 0.7k & 5.4k $\pm$ 0.6k \\
+ICTP $L{=}2$ & 7.5k $\pm$ 1.5k & 6.9k $\pm$ 1.0k & 2.3k $\pm$ 0.2k & 1.9k $\pm$ 0.2k & 2.3k $\pm$ 1.1k & 5.6k $\pm$ 1.4k & 7.7k $\pm$ 2.8k & 8.2k $\pm$ 1.9k & 3.5k $\pm$ 1.0k & 7.1k $\pm$ 0.6k & 5.3k $\pm$ 0.2k \\
+GotenNet$^{\ast}$ & 28.1k $\pm$ 24.0k & 4.3k $\pm$ 3.2k & 14.0k $\pm$ 22.1k & 2.2k $\pm$ 2.7k & 7.5k $\pm$ 12.3k & 3.2k $\pm$ 1.6k & 8.3k $\pm$ 10.0k & 3.9k $\pm$ 3.7k & 2.5k $\pm$ 3.3k & 14.3k $\pm$ 14.8k & 8.8k $\pm$ 2.7k \\
 \midrule
 Clifford (ours base) & 21.855 $\pm$ 0.002 & 22.262 $\pm$ 0.010 & 15.212 $\pm$ 0.009 & 19.996 $\pm$ 0.001 & 21.922 $\pm$ 0.004 & 21.345 $\pm$ 0.024 & 21.313 $\pm$ 0.004 & 21.470 $\pm$ 0.027 & 21.029 $\pm$ 0.004 & 22.074 $\pm$ 0.037 & 20.848 $\pm$ 0.003 \\
-MACE $L{=}1$ & 10695.202 $\pm$ 1263.363 & 5833.759 $\pm$ 686.545 & 2623.598 $\pm$ 414.013 & 2280.055 $\pm$ 338.350 & 4502.337 $\pm$ 386.671 & 6714.490 $\pm$ 306.310 & 6383.798 $\pm$ 964.274 & 8271.525 $\pm$ 1383.843 & 5494.123 $\pm$ 2291.149 & 6264.412 $\pm$ 1240.084 & 5906.330 $\pm$ 395.450 \\
-ICTP $L{=}1$ & 10381.056 $\pm$ 4314.227 & 5737.694 $\pm$ 685.894 & 2188.477 $\pm$ 512.390 & 2006.670 $\pm$ 437.811 & 3967.903 $\pm$ 1103.981 & 4784.822 $\pm$ 1034.136 & 8382.761 $\pm$ 1318.039 & 7519.021 $\pm$ 1571.507 & 3093.157 $\pm$ 187.013 & 4503.096 $\pm$ 3182.639 & 5256.466 $\pm$ 589.312 \\
-PaiNN & 1389.552 $\pm$ 233.861 & 1111.697 $\pm$ 15.152 & 387.093 $\pm$ 20.028 & 392.650 $\pm$ 50.219 & 662.121 $\pm$ 190.588 & 804.449 $\pm$ 239.850 & 970.710 $\pm$ 382.994 & 1015.700 $\pm$ 207.979 & 784.899 $\pm$ 178.245 & 1114.357 $\pm$ 298.359 & 863.323 $\pm$ 7.657 \\
+MACE $L{=}1$ & 10.7k $\pm$ 1.3k & 5.8k $\pm$ 0.7k & 2.6k $\pm$ 0.4k & 2.3k $\pm$ 0.3k & 4.5k $\pm$ 0.4k & 6.7k $\pm$ 0.3k & 6.4k $\pm$ 1.0k & 8.3k $\pm$ 1.4k & 5.5k $\pm$ 2.3k & 6.3k $\pm$ 1.2k & 5.9k $\pm$ 0.4k \\
+ICTP $L{=}1$ & 10.4k $\pm$ 4.3k & 5.7k $\pm$ 0.7k & 2.2k $\pm$ 0.5k & 2.0k $\pm$ 0.4k & 4.0k $\pm$ 1.1k & 4.8k $\pm$ 1.0k & 8.4k $\pm$ 1.3k & 7.5k $\pm$ 1.6k & 3.1k $\pm$ 0.2k & 4.5k $\pm$ 3.2k & 5.3k $\pm$ 0.6k \\
+PaiNN & 1.4k $\pm$ 0.2k & 1.1k $\pm$ 0.0k & 387.093 $\pm$ 20.028 & 392.650 $\pm$ 50.219 & 662.121 $\pm$ 190.588 & 804.449 $\pm$ 239.850 & 970.710 $\pm$ 382.994 & 1.0k $\pm$ 0.2k & 784.899 $\pm$ 178.245 & 1.1k $\pm$ 0.3k & 863.323 $\pm$ 7.657 \\
 TorchMD-NET & 640.948 $\pm$ 78.214 & 347.636 $\pm$ 20.053 & 154.117 $\pm$ 7.309 & 154.106 $\pm$ 1.947 & 299.581 $\pm$ 97.919 & 219.310 $\pm$ 38.192 & 486.259 $\pm$ 81.638 & 386.224 $\pm$ 85.780 & 234.554 $\pm$ 31.349 & 278.833 $\pm$ 25.750 & 320.157 $\pm$ 8.706 \\
-ViSNet & 1723.229 $\pm$ 685.382 & 1662.507 $\pm$ 693.440 & 539.034 $\pm$ 77.909 & 425.601 $\pm$ 309.210 & 825.760 $\pm$ 267.674 & 832.077 $\pm$ 276.489 & 1046.864 $\pm$ 146.699 & 1278.765 $\pm$ 79.916 & 573.367 $\pm$ 152.801 & 1061.395 $\pm$ 185.774 & 996.860 $\pm$ 43.575 \\
-NequIP $L{=}1$ & 6103.445 $\pm$ 9.652 & 2702.767 $\pm$ 51.611 & 1204.373 $\pm$ 12.390 & 1223.091 $\pm$ 13.644 & 2433.167 $\pm$ 1.524 & 1827.596 $\pm$ 19.579 & 4407.751 $\pm$ 42.613 & 2930.541 $\pm$ 18.634 & 1097.903 $\pm$ 6.975 & 2525.185 $\pm$ 15.146 & 2645.582 $\pm$ 10.560 \\
+ViSNet & 1.7k $\pm$ 0.7k & 1.7k $\pm$ 0.7k & 539.034 $\pm$ 77.909 & 425.601 $\pm$ 309.210 & 825.760 $\pm$ 267.674 & 832.077 $\pm$ 276.489 & 1.0k $\pm$ 0.1k & 1.3k $\pm$ 0.1k & 573.367 $\pm$ 152.801 & 1.1k $\pm$ 0.2k & 996.860 $\pm$ 43.575 \\
+NequIP $L{=}1$ & 6.1k $\pm$ 0.0k & 2.7k $\pm$ 0.1k & 1.2k $\pm$ 0.0k & 1.2k $\pm$ 0.0k & 2.4k $\pm$ 0.0k & 1.8k $\pm$ 0.0k & 4.4k $\pm$ 0.0k & 2.9k $\pm$ 0.0k & 1.1k $\pm$ 0.0k & 2.5k $\pm$ 0.0k & 2.6k $\pm$ 0.0k \\
 FAENet$^{\ast}$ & 21.886 $\pm$ 0.030 & 22.288 $\pm$ 0.053 & 11.807 $\pm$ 2.931 & 19.980 $\pm$ 0.008 & 21.814 $\pm$ 0.179 & 21.548 $\pm$ 0.867 & 26.748 $\pm$ 9.464 & 21.679 $\pm$ 0.098 & 20.840 $\pm$ 0.301 & 21.553 $\pm$ 1.018 & 21.014 $\pm$ 0.749 \\
 \midrule
-\color{gray}{DimeNet++} & \color{gray}{1159.690 $\pm$ 114.569} & \color{gray}{991.164 $\pm$ 223.096} & \color{gray}{278.098 $\pm$ 49.866} & \color{gray}{389.387 $\pm$ 103.601} & \color{gray}{726.850 $\pm$ 80.483} & \color{gray}{608.244 $\pm$ 3.732} & \color{gray}{1087.392 $\pm$ 119.690} & \color{gray}{988.503 $\pm$ 107.070} & \color{gray}{519.458 $\pm$ 69.633} & \color{gray}{1014.892 $\pm$ 68.239} & \color{gray}{776.368 $\pm$ 11.972} \\
-\color{gray}{SchNet} & \color{gray}{1218.955 $\pm$ 55.326} & \color{gray}{918.727 $\pm$ 33.117} & \color{gray}{196.534 $\pm$ 20.019} & \color{gray}{97.289 $\pm$ 13.538} & \color{gray}{226.752 $\pm$ 38.836} & \color{gray}{700.782 $\pm$ 58.526} & \color{gray}{1374.468 $\pm$ 64.944} & \color{gray}{1175.513 $\pm$ 2.538} & \color{gray}{627.706 $\pm$ 87.829} & \color{gray}{664.972 $\pm$ 35.163} & \color{gray}{720.170 $\pm$ 4.806} \\
+\color{gray}{DimeNet++} & \color{gray}{1.2k $\pm$ 0.1k} & \color{gray}{991.164 $\pm$ 223.096} & \color{gray}{278.098 $\pm$ 49.866} & \color{gray}{389.387 $\pm$ 103.601} & \color{gray}{726.850 $\pm$ 80.483} & \color{gray}{608.244 $\pm$ 3.732} & \color{gray}{1.1k $\pm$ 0.1k} & \color{gray}{988.503 $\pm$ 107.070} & \color{gray}{519.458 $\pm$ 69.633} & \color{gray}{1.0k $\pm$ 0.1k} & \color{gray}{776.368 $\pm$ 11.972} \\
+\color{gray}{SchNet} & \color{gray}{1.2k $\pm$ 0.1k} & \color{gray}{918.727 $\pm$ 33.117} & \color{gray}{196.534 $\pm$ 20.019} & \color{gray}{97.289 $\pm$ 13.538} & \color{gray}{226.752 $\pm$ 38.836} & \color{gray}{700.782 $\pm$ 58.526} & \color{gray}{1.4k $\pm$ 0.1k} & \color{gray}{1.2k $\pm$ 0.0k} & \color{gray}{627.706 $\pm$ 87.829} & \color{gray}{664.972 $\pm$ 35.163} & \color{gray}{720.170 $\pm$ 4.806} \\
 \bottomrule
 \end{tabular}%
 }
@@ -258,27 +426,27 @@ FAENet$^{\ast}$ & 21.886 $\pm$ 0.030 & 22.288 $\pm$ 0.053 & 11.807 $\pm$ 2.931 &
 \toprule
 Model & Asp & Azo & Bnz & Eth & Mal & Nap & Par & Sal & Tol & Ura & Agg \\
 \midrule
-EquiformerV2 $L{=}4$$^{\dagger}$ & 405923.786 $\pm$ 18.704 & 358291.232 $\pm$ 21.171 & 145252.301 $\pm$ 24.201 & 96939.573 $\pm$ 15.300 & 167157.732 $\pm$ 30.420 & 241354.103 $\pm$ 11.317 & 322486.491 $\pm$ 73.786 & 310419.652 $\pm$ 29.002 & 169769.150 $\pm$ 32.176 & 259614.598 $\pm$ 24.198 & 247720.862 $\pm$ 7.620 \\
-EquiformerV2 $L{=}3$$^{\dagger}$ & 405795.016 $\pm$ 30.290 & 358159.041 $\pm$ 61.323 & 145113.666 $\pm$ 24.505 & 96858.062 $\pm$ 40.895 & 167093.430 $\pm$ 14.297 & 241224.426 $\pm$ 45.951 & 322418.042 $\pm$ 25.040 & 310267.256 $\pm$ 56.913 & 169680.769 $\pm$ 95.895 & 259491.426 $\pm$ 13.557 & 247610.113 $\pm$ 28.646 \\
-EquiformerV2 $L{=}2$$^{\dagger}$ & 405462.974 $\pm$ 101.776 & 357931.495 $\pm$ 43.189 & 145015.878 $\pm$ 42.063 & 96770.338 $\pm$ 30.431 & 166989.789 $\pm$ 32.930 & 240981.193 $\pm$ 45.728 & 322147.690 $\pm$ 36.394 & 310077.538 $\pm$ 98.247 & 169533.852 $\pm$ 20.342 & 259403.546 $\pm$ 39.155 & 247431.429 $\pm$ 12.114 \\
+EquiformerV2 $L{=}4$$^{\dagger}$ & 405.9k $\pm$ 0.0k & 358.3k $\pm$ 0.0k & 145.3k $\pm$ 0.0k & 96.9k $\pm$ 0.0k & 167.2k $\pm$ 0.0k & 241.4k $\pm$ 0.0k & 322.5k $\pm$ 0.1k & 310.4k $\pm$ 0.0k & 169.8k $\pm$ 0.0k & 259.6k $\pm$ 0.0k & 247.7k $\pm$ 0.0k \\
+EquiformerV2 $L{=}3$$^{\dagger}$ & 405.8k $\pm$ 0.0k & 358.2k $\pm$ 0.1k & 145.1k $\pm$ 0.0k & 96.9k $\pm$ 0.0k & 167.1k $\pm$ 0.0k & 241.2k $\pm$ 0.0k & 322.4k $\pm$ 0.0k & 310.3k $\pm$ 0.1k & 169.7k $\pm$ 0.1k & 259.5k $\pm$ 0.0k & 247.6k $\pm$ 0.0k \\
+EquiformerV2 $L{=}2$$^{\dagger}$ & 405.5k $\pm$ 0.1k & 357.9k $\pm$ 0.0k & 145.0k $\pm$ 0.0k & 96.8k $\pm$ 0.0k & 167.0k $\pm$ 0.0k & 241.0k $\pm$ 0.0k & 322.1k $\pm$ 0.0k & 310.1k $\pm$ 0.1k & 169.5k $\pm$ 0.0k & 259.4k $\pm$ 0.0k & 247.4k $\pm$ 0.0k \\
 CliffordSTF (ours) & 28.054 $\pm$ 9.040 & 46.565 $\pm$ 20.081 & 17.160 $\pm$ 2.661 & 6.677 $\pm$ 1.432 & 25.323 $\pm$ 5.299 & 22.087 $\pm$ 14.892 & 60.367 $\pm$ 30.139 & 25.819 $\pm$ 18.136 & 39.777 $\pm$ 20.171 & 31.876 $\pm$ 3.656 & 30.370 $\pm$ 6.565 \\
-MACE $L{=}3$ & 2551.759 $\pm$ 278.579 & 1520.161 $\pm$ 545.650 & 188.788 $\pm$ 42.079 & 393.426 $\pm$ 84.371 & 775.686 $\pm$ 134.804 & 930.046 $\pm$ 54.572 & 2444.054 $\pm$ 1120.166 & 1925.389 $\pm$ 893.246 & 957.564 $\pm$ 141.704 & 1383.283 $\pm$ 139.223 & 1307.016 $\pm$ 235.357 \\
-MACE $L{=}2$ & 4245.049 $\pm$ 1174.948 & 1870.144 $\pm$ 275.126 & 411.629 $\pm$ 325.937 & 653.666 $\pm$ 354.932 & 833.440 $\pm$ 22.310 & 1937.309 $\pm$ 369.825 & 3572.902 $\pm$ 769.090 & 2251.915 $\pm$ 958.746 & 1757.201 $\pm$ 332.740 & 1511.915 $\pm$ 481.285 & 1904.517 $\pm$ 256.547 \\
-ICTP $L{=}3$ & 5931.534 $\pm$ 344.717 & 2626.286 $\pm$ 581.587 & 365.226 $\pm$ 27.122 & 515.550 $\pm$ 60.480 & 1050.430 $\pm$ 274.290 & 1929.769 $\pm$ 434.121 & 3323.999 $\pm$ 558.355 & 2709.675 $\pm$ 555.537 & 1167.476 $\pm$ 33.698 & 1106.806 $\pm$ 304.904 & 2072.675 $\pm$ 154.525 \\
-ICTP $L{=}2$ & 3170.946 $\pm$ 545.109 & 3069.583 $\pm$ 688.218 & 356.589 $\pm$ 14.078 & 516.129 $\pm$ 179.758 & 662.887 $\pm$ 233.720 & 2027.309 $\pm$ 799.047 & 4153.628 $\pm$ 1984.468 & 3067.237 $\pm$ 874.173 & 1423.245 $\pm$ 751.146 & 2152.035 $\pm$ 282.673 & 2059.959 $\pm$ 86.732 \\
-GotenNet$^{\ast}$ & 21189.145 $\pm$ 17125.107 & 3843.291 $\pm$ 4335.519 & 20029.231 $\pm$ 33923.353 & 1077.802 $\pm$ 1585.910 & 104655.073 $\pm$ 79143.641 & 2359.018 $\pm$ 1178.676 & 54092.372 $\pm$ 90199.168 & 14485.384 $\pm$ 23846.904 & 1053.491 $\pm$ 1303.086 & 37410.620 $\pm$ 49566.342 & 26019.543 $\pm$ 7189.691 \\
+MACE $L{=}3$ & 2.6k $\pm$ 0.3k & 1.5k $\pm$ 0.5k & 188.788 $\pm$ 42.079 & 393.426 $\pm$ 84.371 & 775.686 $\pm$ 134.804 & 930.046 $\pm$ 54.572 & 2.4k $\pm$ 1.1k & 1.9k $\pm$ 0.9k & 957.564 $\pm$ 141.704 & 1.4k $\pm$ 0.1k & 1.3k $\pm$ 0.2k \\
+MACE $L{=}2$ & 4.2k $\pm$ 1.2k & 1.9k $\pm$ 0.3k & 411.629 $\pm$ 325.937 & 653.666 $\pm$ 354.932 & 833.440 $\pm$ 22.310 & 1.9k $\pm$ 0.4k & 3.6k $\pm$ 0.8k & 2.3k $\pm$ 1.0k & 1.8k $\pm$ 0.3k & 1.5k $\pm$ 0.5k & 1.9k $\pm$ 0.3k \\
+ICTP $L{=}3$ & 5.9k $\pm$ 0.3k & 2.6k $\pm$ 0.6k & 365.226 $\pm$ 27.122 & 515.550 $\pm$ 60.480 & 1.1k $\pm$ 0.3k & 1.9k $\pm$ 0.4k & 3.3k $\pm$ 0.6k & 2.7k $\pm$ 0.6k & 1.2k $\pm$ 0.0k & 1.1k $\pm$ 0.3k & 2.1k $\pm$ 0.2k \\
+ICTP $L{=}2$ & 3.2k $\pm$ 0.5k & 3.1k $\pm$ 0.7k & 356.589 $\pm$ 14.078 & 516.129 $\pm$ 179.758 & 662.887 $\pm$ 233.720 & 2.0k $\pm$ 0.8k & 4.2k $\pm$ 2.0k & 3.1k $\pm$ 0.9k & 1.4k $\pm$ 0.8k & 2.2k $\pm$ 0.3k & 2.1k $\pm$ 0.1k \\
+GotenNet$^{\ast}$ & 21.2k $\pm$ 17.1k & 3.8k $\pm$ 4.3k & 20.0k $\pm$ 33.9k & 1.1k $\pm$ 1.6k & 104.7k $\pm$ 79.1k & 2.4k $\pm$ 1.2k & 54.1k $\pm$ 90.2k & 14.5k $\pm$ 23.8k & 1.1k $\pm$ 1.3k & 37.4k $\pm$ 49.6k & 26.0k $\pm$ 7.2k \\
 \midrule
 Clifford (ours base) & 66.537 $\pm$ 31.283 & 56.820 $\pm$ 44.698 & 24.707 $\pm$ 17.343 & 14.675 $\pm$ 6.332 & 37.370 $\pm$ 25.576 & 14.780 $\pm$ 5.935 & 23.000 $\pm$ 7.962 & 35.300 $\pm$ 29.797 & 39.009 $\pm$ 31.720 & 29.097 $\pm$ 17.892 & 34.130 $\pm$ 2.563 \\
-MACE $L{=}1$ & 4947.965 $\pm$ 599.700 & 2239.066 $\pm$ 569.099 & 446.266 $\pm$ 78.046 & 748.730 $\pm$ 294.846 & 1398.354 $\pm$ 315.339 & 2504.580 $\pm$ 79.502 & 2901.101 $\pm$ 596.514 & 3221.876 $\pm$ 128.621 & 2437.720 $\pm$ 1129.734 & 1909.722 $\pm$ 308.925 & 2275.538 $\pm$ 140.370 \\
-ICTP $L{=}1$ & 5057.880 $\pm$ 2637.906 & 2213.064 $\pm$ 507.720 & 709.468 $\pm$ 201.768 & 646.268 $\pm$ 219.460 & 1227.461 $\pm$ 358.893 & 1879.627 $\pm$ 189.364 & 4681.931 $\pm$ 806.638 & 2997.283 $\pm$ 934.790 & 1484.259 $\pm$ 91.999 & 1375.289 $\pm$ 722.310 & 2227.253 $\pm$ 363.568 \\
-PaiNN & 4475.381 $\pm$ 1348.351 & 3124.941 $\pm$ 3471.133 & 654.920 $\pm$ 484.394 & 572.296 $\pm$ 497.010 & 1369.284 $\pm$ 776.789 & 1368.522 $\pm$ 1051.339 & 2591.351 $\pm$ 3253.056 & 697.934 $\pm$ 132.654 & 1403.076 $\pm$ 699.580 & 2022.310 $\pm$ 1482.978 & 1828.002 $\pm$ 485.267 \\
-TorchMD-NET & 1417.537 $\pm$ 667.887 & 496.497 $\pm$ 269.580 & 180.477 $\pm$ 170.513 & 187.650 $\pm$ 148.968 & 486.742 $\pm$ 231.389 & 451.681 $\pm$ 462.015 & 1563.652 $\pm$ 518.824 & 624.017 $\pm$ 754.032 & 263.880 $\pm$ 284.126 & 940.992 $\pm$ 872.265 & 661.312 $\pm$ 130.339 \\
-ViSNet & 2726.525 $\pm$ 1482.771 & 6510.864 $\pm$ 2722.879 & 413.191 $\pm$ 358.609 & 1509.814 $\pm$ 1627.433 & 348.909 $\pm$ 95.459 & 2181.820 $\pm$ 989.848 & 1679.947 $\pm$ 287.837 & 4077.220 $\pm$ 2940.599 & 922.044 $\pm$ 640.715 & 2868.971 $\pm$ 751.863 & 2323.931 $\pm$ 172.992 \\
-NequIP $L{=}1$ & 3706.872 $\pm$ 93.659 & 1017.863 $\pm$ 124.652 & 197.342 $\pm$ 39.519 & 453.727 $\pm$ 39.250 & 916.506 $\pm$ 14.226 & 542.585 $\pm$ 12.952 & 3081.627 $\pm$ 112.092 & 1174.807 $\pm$ 105.276 & 411.931 $\pm$ 64.980 & 755.870 $\pm$ 109.032 & 1225.913 $\pm$ 4.496 \\
+MACE $L{=}1$ & 4.9k $\pm$ 0.6k & 2.2k $\pm$ 0.6k & 446.266 $\pm$ 78.046 & 748.730 $\pm$ 294.846 & 1.4k $\pm$ 0.3k & 2.5k $\pm$ 0.1k & 2.9k $\pm$ 0.6k & 3.2k $\pm$ 0.1k & 2.4k $\pm$ 1.1k & 1.9k $\pm$ 0.3k & 2.3k $\pm$ 0.1k \\
+ICTP $L{=}1$ & 5.1k $\pm$ 2.6k & 2.2k $\pm$ 0.5k & 709.468 $\pm$ 201.768 & 646.268 $\pm$ 219.460 & 1.2k $\pm$ 0.4k & 1.9k $\pm$ 0.2k & 4.7k $\pm$ 0.8k & 3.0k $\pm$ 0.9k & 1.5k $\pm$ 0.1k & 1.4k $\pm$ 0.7k & 2.2k $\pm$ 0.4k \\
+PaiNN & 4.5k $\pm$ 1.3k & 3.1k $\pm$ 3.5k & 654.920 $\pm$ 484.394 & 572.296 $\pm$ 497.010 & 1.4k $\pm$ 0.8k & 1.4k $\pm$ 1.1k & 2.6k $\pm$ 3.3k & 697.934 $\pm$ 132.654 & 1.4k $\pm$ 0.7k & 2.0k $\pm$ 1.5k & 1.8k $\pm$ 0.5k \\
+TorchMD-NET & 1.4k $\pm$ 0.7k & 496.497 $\pm$ 269.580 & 180.477 $\pm$ 170.513 & 187.650 $\pm$ 148.968 & 486.742 $\pm$ 231.389 & 451.681 $\pm$ 462.015 & 1.6k $\pm$ 0.5k & 624.017 $\pm$ 754.032 & 263.880 $\pm$ 284.126 & 940.992 $\pm$ 872.265 & 661.312 $\pm$ 130.339 \\
+ViSNet & 2.7k $\pm$ 1.5k & 6.5k $\pm$ 2.7k & 413.191 $\pm$ 358.609 & 1.5k $\pm$ 1.6k & 348.909 $\pm$ 95.459 & 2.2k $\pm$ 1.0k & 1.7k $\pm$ 0.3k & 4.1k $\pm$ 2.9k & 922.044 $\pm$ 640.715 & 2.9k $\pm$ 0.8k & 2.3k $\pm$ 0.2k \\
+NequIP $L{=}1$ & 3.7k $\pm$ 0.1k & 1.0k $\pm$ 0.1k & 197.342 $\pm$ 39.519 & 453.727 $\pm$ 39.250 & 916.506 $\pm$ 14.226 & 542.585 $\pm$ 12.952 & 3.1k $\pm$ 0.1k & 1.2k $\pm$ 0.1k & 411.931 $\pm$ 64.980 & 755.870 $\pm$ 109.032 & 1.2k $\pm$ 0.0k \\
 FAENet$^{\ast}$ & 33.876 $\pm$ 15.568 & 26.864 $\pm$ 26.312 & 4.012 $\pm$ 1.777 & 3.480 $\pm$ 0.059 & 3.351 $\pm$ 0.161 & 47.213 $\pm$ 38.921 & 87.265 $\pm$ 123.215 & 32.828 $\pm$ 30.261 & 8.166 $\pm$ 3.405 & 5.399 $\pm$ 2.175 & 25.245 $\pm$ 12.952 \\
 \midrule
-\color{gray}{DimeNet++} & \color{gray}{1803.376 $\pm$ 1148.859} & \color{gray}{3668.579 $\pm$ 2370.097} & \color{gray}{216.364 $\pm$ 250.668} & \color{gray}{611.701 $\pm$ 618.476} & \color{gray}{1027.424 $\pm$ 333.651} & \color{gray}{956.485 $\pm$ 380.148} & \color{gray}{1106.519 $\pm$ 662.856} & \color{gray}{1620.853 $\pm$ 1391.876} & \color{gray}{724.374 $\pm$ 424.645} & \color{gray}{1195.494 $\pm$ 1357.253} & \color{gray}{1293.117 $\pm$ 363.802} \\
-\color{gray}{SchNet} & \color{gray}{1201.150 $\pm$ 814.112} & \color{gray}{1320.955 $\pm$ 1018.289} & \color{gray}{604.539 $\pm$ 447.764} & \color{gray}{403.595 $\pm$ 239.889} & \color{gray}{588.952 $\pm$ 533.312} & \color{gray}{1698.869 $\pm$ 688.171} & \color{gray}{1224.704 $\pm$ 442.172} & \color{gray}{2065.618 $\pm$ 938.739} & \color{gray}{441.554 $\pm$ 134.053} & \color{gray}{981.058 $\pm$ 333.775} & \color{gray}{1053.099 $\pm$ 95.632} \\
+\color{gray}{DimeNet++} & \color{gray}{1.8k $\pm$ 1.1k} & \color{gray}{3.7k $\pm$ 2.4k} & \color{gray}{216.364 $\pm$ 250.668} & \color{gray}{611.701 $\pm$ 618.476} & \color{gray}{1.0k $\pm$ 0.3k} & \color{gray}{956.485 $\pm$ 380.148} & \color{gray}{1.1k $\pm$ 0.7k} & \color{gray}{1.6k $\pm$ 1.4k} & \color{gray}{724.374 $\pm$ 424.645} & \color{gray}{1.2k $\pm$ 1.4k} & \color{gray}{1.3k $\pm$ 0.4k} \\
+\color{gray}{SchNet} & \color{gray}{1.2k $\pm$ 0.8k} & \color{gray}{1.3k $\pm$ 1.0k} & \color{gray}{604.539 $\pm$ 447.764} & \color{gray}{403.595 $\pm$ 239.889} & \color{gray}{588.952 $\pm$ 533.312} & \color{gray}{1.7k $\pm$ 0.7k} & \color{gray}{1.2k $\pm$ 0.4k} & \color{gray}{2.1k $\pm$ 0.9k} & \color{gray}{441.554 $\pm$ 134.053} & \color{gray}{981.058 $\pm$ 333.775} & \color{gray}{1.1k $\pm$ 0.1k} \\
 \bottomrule
 \end{tabular}%
 }
@@ -286,7 +454,7 @@ FAENet$^{\ast}$ & 33.876 $\pm$ 15.568 & 26.864 $\pm$ 26.312 & 4.012 $\pm$ 1.777 
 
 \subsection{OC20 and OC22 full results}\label{supp:oc_full}
 
-This subsection reports the full OC20 and OC22 results (Table~\ref{tab:oc_full}), mean $\pm$ std across seeds in native units. Panel~(a) gives OC20 at the 200k scale: IS2RE MAE for all four splits ($\mathrm{val}_{\text{id}}$, $\mathrm{val}_{\text{ood-ads}}$, $\mathrm{val}_{\text{ood-cat}}$, $\mathrm{val}_{\text{ood-both}}$) together with S2EF ($e_\mathrm{MAE}$, $f_\mathrm{MAE}$, $f_\mathrm{cos}$) for $\mathrm{val}_{\text{id}}$ and $\mathrm{val}_{\text{ood-both}}$; the two remaining OOD splits (ood-ads, ood-cat) behave similarly to ood-both on S2EF and are omitted for compactness. Panel~(b) reproduces the OC22 results from the main text (Table~\ref{tab:oc22}) alongside OC20 for side-by-side reading.
+This subsection reports the full OC20 and OC22 results (Table~\ref{tab:oc_full}), mean $\pm$ std across seeds in native units. Panel~(a) gives OC20 at the 200k scale: IS2RE MAE for all four splits ($\mathrm{val}_{\text{id}}$, $\mathrm{val}_{\text{ood-ads}}$, $\mathrm{val}_{\text{ood-cat}}$, $\mathrm{val}_{\text{ood-both}}$) together with S2EF ($e_\mathrm{MAE}$, $f_\mathrm{MAE}$, $f_\mathrm{cos}$) for $\mathrm{val}_{\text{id}}$ and $\mathrm{val}_{\text{ood-both}}$; the two remaining OOD splits (ood-ads, ood-cat) behave similarly to ood-both on S2EF and are omitted for compactness. Panel~(b) reproduces the OC22 results from the main text (Table~\ref{tab:oc22}) alongside OC20 for side-by-side reading. Reading across the two panels, CliffordSTF and the base Clifford row attain the strongest in-distribution S2EF energy MAE on both benchmarks (panel (a) OC20: $2.115$/$1.889$\,eV vs.\ $2.454$\,eV for EquiformerV2; panel (b) OC22: $2.866$/$2.844$\,eV vs.\ $3.369$\,eV); CliffordSTF additionally is the best $L\!\geq\!2$ architecture on OC22 IS2RE in-distribution ($4.089$\,eV vs.\ $4.905$\,eV for EquiformerV2 at $L_{\max}\!=\!4$). EquiformerV2 retains the strongest S2EF force cosine similarity on OC20 in our protocol; on OC22 the two are within seed variance.
 
 \begin{table}[h]
 \centering
@@ -349,7 +517,7 @@ NequIP & 12.575 $\pm$ 4.889 & 14.865 $\pm$ 3.676 & 9.868 $\pm$ 0.148 & 0.079 $\p
 
 \subsection{QM9 and Molecule3D full results}\label{supp:qm9_full}
 
-Per-target MAE on QM9 and Molecule3D HOMO--LUMO gap, reported in Table~\ref{tab:qm9_mol3d_full} with native units per column and rows ordered by QM9 aggregate.
+Per-target MAE on QM9 and Molecule3D HOMO--LUMO gap, reported in Table~\ref{tab:qm9_mol3d_full} with native units per column and rows ordered by QM9 aggregate. The QM9 aggregate column averages the six per-target MAEs across mixed units, providing a single scalar per model that is comparable within the column; CliffordSTF places fifth of ten models at $2.152$\,units, sitting alongside the vector-equivariant baselines (PaiNN $2.229$, TorchMD-NET $2.232$) and ahead of the next-best $L\!\geq\!2$ row (EquiformerV2 $3.327$). On the Molecule3D HOMO--LUMO gap, FAENet's $0.178$\,eV is an order of magnitude ahead of the rest of the field; the remaining models cluster between $1.107$ and $1.495$\,eV with CliffordSTF at $1.232$\,eV, and we treat Molecule3D as out-of-scope for the directional thesis (\S\ref{sec:limitations}).
 
 \begin{table}[h]
 \centering

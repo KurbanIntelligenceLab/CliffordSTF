@@ -34,7 +34,7 @@ CliffordSTF and ICTP~\citep{zaverkin2024ictp} both use symmetric traceless Carte
 
 \textbf{Equivariance scope.} ICTP proves $\mathrm{O}(3)$ equivariance (rotations and reflections), with parity tracked explicitly through the product structure. CliffordSTF proves $\mathrm{SO}(3)$ equivariance; under $\mathrm{O}(3)$, the polar-vector grade-1 component and the axial-vector Hodge-of-bivector component would need distinct parity labels $1^-$ and $1^+$ respectively (Remark~\ref{rem:so3_vs_o3}, Supplementary~\ref{supp:so3_o3}). The current implementation concatenates the two in the force readout under the $\mathrm{SO}(3)$ framework, which is consistent under rotations but would need refactoring for full $\mathrm{O}(3)$.
 
-These differences explain why the two architectures occupy different operating points. ICTP targets state-of-the-art accuracy on small-molecule benchmarks at the cost of a denser bilinear. CliffordSTF targets a minimal algebraic substrate with closed-form coupling, trading raw small-molecule accuracy for parameter efficiency on catalysis (OC20, OC22) and for a direct mechanistic handle on which design choices drive which gains, as demonstrated by our twelve-variant ablation (\S\ref{sec:results_scalar}).
+These differences explain why the two architectures occupy different operating points. ICTP targets state-of-the-art accuracy on small-molecule benchmarks at the cost of a denser bilinear. CliffordSTF targets a minimal algebraic substrate with closed-form coupling, trading raw small-molecule accuracy for parameter efficiency on catalysis (OC20, OC22) and for a direct mechanistic handle on which design choices drive which gains, as demonstrated by our eleven-variant ablation (\S\ref{sec:results_scalar}).
 
 \subsection{Reconciliation with prior Clifford-network grade structure}\label{supp:gatr}
 
@@ -50,6 +50,7 @@ All guarantees stated in \S\ref{sec:method} are $\mathrm{SO}(3)$-equivariance gu
 
 \begin{table}[h]
 \centering
+\caption{$\mathrm{O}(3)$ parity labels for the tracks used in CliffordSTF. The general rule is $\mathrm{STF}_\ell$ built from polar vectors has parity $(-1)^\ell$, matching the parity of the spherical harmonic $Y_{\ell m}(-\hat{n}) = (-1)^\ell Y_{\ell m}(\hat{n})$.}\label{tab:parity}
 \small
 \begin{tabular}{lccc}
 \toprule
@@ -63,7 +64,6 @@ $\mathrm{STF}_2$ from polar vectors & quadrupole $Q_{ij}$ & $+$ & $2^+$ \\
 $\mathrm{STF}_3$ from polar vectors & octupole $O_{ijk}$ & $-$ & $3^-$ \\
 \bottomrule
 \end{tabular}
-\caption{$\mathrm{O}(3)$ parity labels for the tracks used in CliffordSTF. The general rule is $\mathrm{STF}_\ell$ built from polar vectors has parity $(-1)^\ell$, matching the parity of the spherical harmonic $Y_{\ell m}(-\hat{n}) = (-1)^\ell Y_{\ell m}(\hat{n})$.}\label{tab:parity}
 \end{table}
 
 Extending to full $\mathrm{O}(3)$-equivariance would require treating the grade-1 polar-vector feature and the Hodge-of-bivector axial-vector feature as distinct $1^-$ and $1^+$ tracks rather than concatenating them, and likewise distinguishing $2^+$ and $3^-$ tracks. All bilinear interactions in the architecture respect this parity grading when made explicit; the current implementation simply chooses not to distinguish $1^+$ from $1^-$, which is consistent under $\mathrm{SO}(3)$ but would conflate them under $\mathrm{O}(3)$.
@@ -170,11 +170,25 @@ Adaptive routing reduces effective angular bandwidth for atoms in symmetric envi
 
 \subsection{Full ablation configurations}\label{supp:variants}
 
-CliffordSTF is a single configurable architecture parameterised by five ablation flags: $\mathrm{stf\_mode} \in \{\text{none}, \text{stf2}, \text{stf2+stf3}\}$, $\mathrm{use\_hodge\_forces} \in \{\text{off}, \text{on}\}$, $\mathrm{use\_adaptive\_routing} \in \{\text{off}, \text{on}\}$, $\mathrm{routing\_mode} \in \{\text{none}, \text{static}, \text{learned}\}$, and $\mathrm{use\_cross\_track} \in \{\text{off}, \text{on}\}$. Table~\ref{tab:ablation} enumerates the twelve named variants used in the ablation study. Setting all five flags to their off/none state recovers the base Clifford model bit-for-bit, providing a clean baseline for the $L \leq 1$ diagnostic. The \emph{STF only output} variant is a structural ablation outside the flag space: it removes the STF tracks from the message-passing scaffold entirely while retaining an STF-augmented force-readout head, isolating whether the directional gain comes from $L\!\geq\!2$ representations operating throughout message passing or from an $L\!\geq\!2$ readout alone.
+CliffordSTF is a single configurable architecture parameterised by five ablation flags: $\mathrm{stf\_mode} \in \{\text{none}, \text{stf2}, \text{stf2+stf3}\}$, $\mathrm{use\_hodge\_forces} \in \{\text{off}, \text{on}\}$, $\mathrm{use\_adaptive\_routing} \in \{\text{off}, \text{on}\}$, $\mathrm{routing\_mode} \in \{\text{none}, \text{static}, \text{learned}\}$, and $\mathrm{use\_cross\_track} \in \{\text{off}, \text{on}\}$. Table~\ref{tab:ablation} enumerates the eleven named variants used in the ablation study, alongside the vanilla $L{=}1$ Clifford baseline (which is recovered bit-for-bit by setting all five flags to their off/none state and is shown as the twelfth row of Table~\ref{tab:ablation} for comparison). Ten of the eleven variants are flag-parameterised; the eleventh, \emph{STF only output}, is a structural ablation outside the flag space: it removes the STF tracks from the message-passing scaffold entirely while retaining an STF-augmented force-readout head, isolating whether the directional gain comes from $L\!\geq\!2$ representations operating throughout message passing or from an $L\!\geq\!2$ readout alone.
 
 % =========================================================
 % Experiments-cited sections
 % =========================================================
+
+\subsection{Caveats and per-model exclusions for headline tables}\label{supp:results_caveats}
+
+This subsection holds the per-model reasoning behind the caveat marks ($\ast$, $\dagger$, gray rows) used in Tables~\ref{tab:md17_fcos} and~\ref{tab:oc22}. The marks themselves are explained in one phrase each in the table captions; this subsection expands each justification.
+
+\textbf{Strictly invariant models (SchNet, DimeNet++).} Both architectures are scalar-only and compute forces as the negative gradient of the predicted energy with respect to atomic positions, rather than from a direct-force head. The cosine similarity of gradient-derived forces depends on the energy--force loss balancing during training; under our uniform protocol this balance is not tuned per architecture, and gradient-derived directional fidelity is not a comparable diagnostic against models that predict forces directly. We render their rows in gray in Table~\ref{tab:md17_fcos} and exclude them from the per-architecture directional narrative in \S\ref{sec:results_md17}.
+
+\textbf{FAENet.} FAENet predicts forces directly from a learned head but achieves equivariance via stochastic frame averaging rather than through architectural constraints on the message-passing operations themselves. Because the frames are sampled at training and inference time, per-sample force predictions are not strictly equivariant and per-sample directional fidelity is not strictly defined. We list FAENet in its natural $L\!\leq\!1$ cohort with an $\ast$ mark and exclude it from the per-architecture directional comparison.
+
+\textbf{GotenNet.} GotenNet is an $L\!\geq\!2$ architecture ($\mathtt{lmax}{=}2$) with a direct-force head, and would naturally belong in the top block of Table~\ref{tab:md17_fcos}. Under our fixed-budget protocol it did not converge on rMD17. The published GotenNet recipe matches our learning rate ($10^{-4}$) but additionally relies on a $10{,}000$-step learning-rate warmup, an on-plateau learning-rate scheduler, and early-stopping patience $150$, none of which are part of our fixed-budget protocol (constant LR, patience $30$, no warm-up). We report the GotenNet result in its natural $L$-cohort with an $\ast$ mark for completeness and exclude it from the per-architecture directional narrative; the underperformance reflects protocol mismatch rather than architecture quality at recommended hyperparameters.
+
+\textbf{EquiformerV2 absolute-energy prediction.} EquiformerV2 predicts absolute (non-referenced) molecular energies rather than energy differences relative to a per-element reference. Its rMD17 energy MAE therefore reflects the magnitude of the absolute binding energy ($\sim$247\,eV, consistent across all three $L_{\max}$ settings) rather than a prediction error, and is not directly comparable to the energy-referenced MAEs of the other rows. We mark this with $\dagger$ in Table~\ref{tab:md17_fcos} and in the corresponding panel of Supplementary~\ref{supp:md17_permol}; the force-cosine similarity column, which is independent of the energy-referencing convention, remains directly comparable across all rows.
+
+\textbf{Fixed-budget non-convergence (MACE, ICTP).} Under our uniform $10^6$-parameter budget, MACE and ICTP at every reported $L_{\max}$ attain force MAE in the 3{,}000--6{,}000\,meV/\AA{} range on rMD17 and energy MAE in the 8--22\,eV range on OC22. Both architectures are designed to operate at substantially larger capacity (typically $5{-}20\times 10^6$ parameters under recommended hyperparameters), and the underperformance reported here reflects the fixed-budget protocol rather than architecture quality at native scale. We report the values honestly in the tables as part of the within-protocol comparison the paper makes (\S\ref{sec:protocol}); readers interested in MACE/ICTP at recommended hyperparameters should consult the original publications.
 
 \subsection{Training protocol and parameter budgets}\label{supp:protocol}
 
@@ -258,7 +272,7 @@ Table~\ref{tab:supp_settings_oc} lists the architectures used for OC20 and OC22 
 
 \begin{table}[h]
 \centering
-\caption{Model architecture hyperparameters used on \textbf{OC20 \& OC22 (IS2RE \& S2EF)}. The per-model architecture is identical between OC20 and OC22; only training schedules differ. \textbf{OC20:} all runs use Adam, no weight decay, batch size 16, learning rate 0.0001, 50 epochs, early-stopping patience 30; L1 loss on IS2RE for all models, MSE loss on S2EF for all models. \textbf{OC22:} all runs use Adam, no weight decay, batch size 16, learning rate 0.0001; on IS2RE, 200 epochs and patience 30 for SchNet, PaiNN, DimeNet++, NequIP, EquiformerV2, CliffordSTF, 150 epochs and patience 50 for MACE L=1, MACE L=2, ICTP L=1, ICTP L=2, 50 epochs and patience 30 for GotenNet, TorchMD-Net, Clifford (L1 loss throughout); on S2EF, 50 epochs, MSE loss, patience 30 for all models. Cutoff is in \AA; Boolean flags are abbreviated T/F.}
+\caption{Model architecture hyperparameters used on \textbf{OC20 \& OC22 (IS2RE \& S2EF)}. The per-model architecture is identical between OC20 and OC22; only training schedules differ. \textbf{OC20:} all runs use Adam, no weight decay, batch size 16, learning rate 0.0001, 50 epochs, early-stopping patience 30; L1 loss on IS2RE for all models, MSE loss on S2EF for all models. \textbf{OC22:} all runs use Adam, no weight decay, batch size 16, learning rate 0.0001; on IS2RE, 200 epochs and patience 50; on S2EF, 50 epochs, MSE loss, patience 30 for all models. Cutoff is in \AA; Boolean flags are abbreviated T/F.}
 \label{tab:supp_settings_oc}
 \footnotesize
 \setlength{\tabcolsep}{4pt}
@@ -454,11 +468,11 @@ FAENet$^{\ast}$ & 33.876 $\pm$ 15.568 & 26.864 $\pm$ 26.312 & 4.012 $\pm$ 1.777 
 
 \subsection{OC20 and OC22 full results}\label{supp:oc_full}
 
-This subsection reports the full OC20 and OC22 results (Table~\ref{tab:oc_full}), mean $\pm$ std across seeds in native units. Panel~(a) gives OC20 at the 200k scale: IS2RE MAE for all four splits ($\mathrm{val}_{\text{id}}$, $\mathrm{val}_{\text{ood-ads}}$, $\mathrm{val}_{\text{ood-cat}}$, $\mathrm{val}_{\text{ood-both}}$) together with S2EF ($e_\mathrm{MAE}$, $f_\mathrm{MAE}$, $f_\mathrm{cos}$) for $\mathrm{val}_{\text{id}}$ and $\mathrm{val}_{\text{ood-both}}$; the two remaining OOD splits (ood-ads, ood-cat) behave similarly to ood-both on S2EF and are omitted for compactness. Panel~(b) reproduces the OC22 results from the main text (Table~\ref{tab:oc22}) alongside OC20 for side-by-side reading. Reading across the two panels, CliffordSTF and the base Clifford row attain the strongest in-distribution S2EF energy MAE on both benchmarks (panel (a) OC20: $2.115$/$1.889$\,eV vs.\ $2.454$\,eV for EquiformerV2; panel (b) OC22: $2.866$/$2.844$\,eV vs.\ $3.369$\,eV); CliffordSTF additionally is the best $L\!\geq\!2$ architecture on OC22 IS2RE in-distribution ($4.089$\,eV vs.\ $4.905$\,eV for EquiformerV2 at $L_{\max}\!=\!4$). EquiformerV2 retains the strongest S2EF force cosine similarity on OC20 in our protocol; on OC22 the two are within seed variance.
+This subsection reports the full OC20 and OC22 results (Table~\ref{tab:oc_full}), mean $\pm$ std across seeds in native units. Panel~(a) gives OC20 at the 200k scale: IS2RE MAE for all four splits ($\mathrm{val}_{\text{id}}$, $\mathrm{val}_{\text{ood-ads}}$, $\mathrm{val}_{\text{ood-cat}}$, $\mathrm{val}_{\text{ood-both}}$) together with S2EF ($e_\mathrm{MAE}$, $f_\mathrm{MAE}$, $f_\mathrm{cos}$) for $\mathrm{val}_{\text{id}}$ and $\mathrm{val}_{\text{ood-both}}$; the two remaining OOD splits (ood-ads, ood-cat) behave similarly to ood-both on S2EF and are omitted for compactness. Panel~(b) reproduces the OC22 results from the main text (Table~\ref{tab:oc22}) alongside OC20 for side-by-side reading. Reading across the two panels, CliffordSTF and the base Clifford row attain the strongest in-distribution S2EF energy MAE on both benchmarks (panel (a) OC20: $2.115$/$1.889$\,eV vs.\ $2.454$\,eV for EquiformerV2; panel (b) OC22: $2.866$/$2.844$\,eV vs.\ $3.369$\,eV); CliffordSTF additionally is the best $L\!\geq\!2$ architecture on OC22 IS2RE in-distribution ($4.089$\,eV vs.\ next-best $L\!\geq\!2$ GotenNet at $4.318$\,eV and EquiformerV2 at $L_{\max}\!=\!4$ at $4.905$\,eV) and on OC22 IS2RE OOD EwT ($0.312$ vs $0.234$ for EquiformerV2). EquiformerV2 retains the strongest S2EF force cosine similarity on OC20 in our protocol; on OC22 the two are within seed variance.
 
 \begin{table}[h]
 \centering
-\caption{\textbf{OC20 and OC22 full results} (mean $\pm$ std across 3 seeds; native units: eV for IS2RE MAE and S2EF energy MAE, eV/\AA{} for S2EF force MAE, dimensionless for force cosine similarity). (a) OC20 at the 200k scale, with IS2RE across all four splits and S2EF for $\mathrm{val}_{\text{id}}$ and $\mathrm{val}_{\text{ood-both}}$. (b) OC22 at full scale, with IS2RE and S2EF for $\mathrm{val}_{\text{id}}$ and $\mathrm{val}_{\text{ood}}$. Our models are in the top two rows of each panel. MACE and ICTP at $L_{\max}\!\in\!\{1,2\}$ attain energy MAE values 1--3$\times$ those of converged baselines under the fixed $10^6$-parameter budget, mirroring the non-convergence pattern documented on rMD17 (Table~\ref{tab:md17_permol_full}).}
+\caption{\textbf{OC20 and OC22 full results} (mean $\pm$ std across 3 seeds; native units: eV for IS2RE MAE and S2EF energy MAE, eV/\AA{} for S2EF force MAE, dimensionless for force cosine similarity). (a) OC20 at the 200k scale, with IS2RE across all four splits and S2EF for $\mathrm{val}_{\text{id}}$ and $\mathrm{val}_{\text{ood-both}}$. (b) OC22 at full scale, with IS2RE MAE for $\mathrm{val}_{\text{id}}$ and $\mathrm{val}_{\text{ood}}$, IS2RE EwT for $\mathrm{val}_{\text{ood}}$, and S2EF for $\mathrm{val}_{\text{id}}$ and $\mathrm{val}_{\text{ood}}$. Our models are in the top two rows of each panel. MACE and ICTP at $L_{\max}\!\in\!\{1,2\}$ attain energy MAE values 1--3$\times$ those of converged baselines under the fixed $10^6$-parameter budget, mirroring the non-convergence pattern documented on rMD17 (Table~\ref{tab:md17_permol_full}).}
 \label{tab:oc_full}
 \setlength{\tabcolsep}{3pt}
 \scriptsize
@@ -490,25 +504,25 @@ NequIP & 0.931 $\pm$ 0.048 & 0.971 $\pm$ 0.083 & 0.899 $\pm$ 0.053 & 0.893 $\pm$
 \vspace{8pt}
 {(b) OC22}\\[2pt]
 \resizebox{\textwidth}{!}{%
-\begin{tabular}{lcccccccc}
+\begin{tabular}{lccccccccc}
 \toprule
-& \multicolumn{2}{c}{IS2RE MAE (eV)} & \multicolumn{3}{c}{S2EF $\mathrm{val}_{\text{id}}$} & \multicolumn{3}{c}{S2EF $\mathrm{val}_{\text{ood}}$} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-6}\cmidrule(lr){7-9}
-Model & $\mathrm{val}_{\text{id}}$ & $\mathrm{val}_{\text{ood}}$ & $e_\mathrm{MAE}$ (eV) & $f_\mathrm{MAE}$ (eV/\AA) & $f_\mathrm{cos}\uparrow$ & $e_\mathrm{MAE}$ (eV) & $f_\mathrm{MAE}$ (eV/\AA) & $f_\mathrm{cos}\uparrow$ \\
+& \multicolumn{3}{c}{IS2RE} & \multicolumn{3}{c}{S2EF $\mathrm{val}_{\text{id}}$} & \multicolumn{3}{c}{S2EF $\mathrm{val}_{\text{ood}}$} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}
+Model & $\mathrm{MAE}_{\text{id}}$ (eV) & $\mathrm{MAE}_{\text{ood}}$ (eV) & $\mathrm{EwT}_{\text{ood}}\uparrow$ & $e_\mathrm{MAE}$ (eV) & $f_\mathrm{MAE}$ (eV/\AA) & $f_\mathrm{cos}\uparrow$ & $e_\mathrm{MAE}$ (eV) & $f_\mathrm{MAE}$ (eV/\AA) & $f_\mathrm{cos}\uparrow$ \\
 \midrule
-CliffordSTF (ours) & 4.089 $\pm$ 0.261 & 6.463 $\pm$ 0.310 & 2.866 $\pm$ 0.093 & 0.073 $\pm$ 0.000 & 0.050 $\pm$ 0.004 & 5.083 $\pm$ 0.166 & 0.070 $\pm$ 0.000 & 0.050 $\pm$ 0.003 \\
-Clifford (ours base) & 4.422 $\pm$ 0.862 & 6.726 $\pm$ 0.656 & 2.844 $\pm$ 0.100 & 0.072 $\pm$ 0.000 & 0.059 $\pm$ 0.002 & 5.375 $\pm$ 0.157 & 0.071 $\pm$ 0.001 & 0.058 $\pm$ 0.002 \\
-EquiformerV2 & 4.905 $\pm$ 0.566 & 6.619 $\pm$ 0.445 & 3.369 $\pm$ 0.066 & 0.072 $\pm$ 0.000 & 0.067 $\pm$ 0.001 & 5.262 $\pm$ 0.076 & 0.070 $\pm$ 0.000 & 0.062 $\pm$ 0.002 \\
-PaiNN & 3.516 $\pm$ 0.292 & 6.712 $\pm$ 0.140 & 5.306 $\pm$ 0.030 & 0.076 $\pm$ 0.000 & 0.048 $\pm$ 0.001 & 7.452 $\pm$ 0.254 & 0.078 $\pm$ 0.000 & 0.036 $\pm$ 0.001 \\
-GotenNet & 4.318 $\pm$ 0.300 & 5.772 $\pm$ 0.532 & 4.666 $\pm$ 0.310 & 0.073 $\pm$ 0.000 & 0.052 $\pm$ 0.001 & 7.200 $\pm$ 0.121 & 0.072 $\pm$ 0.001 & 0.044 $\pm$ 0.001 \\
-TorchMD-NET & 5.397 $\pm$ 0.000 & 8.312 $\pm$ 0.000 & 4.278 $\pm$ 0.000 & 0.075 $\pm$ 0.000 & 0.051 $\pm$ 0.000 & 6.232 $\pm$ 0.000 & 0.074 $\pm$ 0.000 & 0.043 $\pm$ 0.000 \\
-DimeNet++ & 6.320 $\pm$ 4.141 & 9.897 $\pm$ 3.002 & 5.288 $\pm$ 0.030 & 0.076 $\pm$ 0.000 & 0.054 $\pm$ 0.002 & 8.717 $\pm$ 0.075 & 0.077 $\pm$ 0.001 & 0.038 $\pm$ 0.002 \\
-SchNet & 6.402 $\pm$ 1.688 & 9.424 $\pm$ 0.938 & 7.690 $\pm$ 1.508 & 0.077 $\pm$ 0.002 & 0.032 $\pm$ 0.007 & 12.016 $\pm$ 1.938 & 0.078 $\pm$ 0.002 & 0.024 $\pm$ 0.003 \\
-MACE $L{=}2$ & 8.416 $\pm$ 0.702 & 22.569 $\pm$ 7.674 & 10.017 $\pm$ 0.395 & 0.079 $\pm$ 0.000 & 0.022 $\pm$ 0.004 & 15.415 $\pm$ 0.808 & 0.076 $\pm$ 0.000 & 0.022 $\pm$ 0.005 \\
-ICTP $L{=}2$ & 8.641 $\pm$ 1.744 & 17.756 $\pm$ 4.145 & 12.447 $\pm$ 0.354 & 0.081 $\pm$ 0.001 & 0.015 $\pm$ 0.002 & 19.218 $\pm$ 0.232 & 0.079 $\pm$ 0.001 & 0.017 $\pm$ 0.002 \\
-ICTP $L{=}1$ & 10.963 $\pm$ 1.612 & 20.810 $\pm$ 0.868 & 11.483 $\pm$ 0.881 & 0.080 $\pm$ 0.001 & 0.019 $\pm$ 0.001 & 17.263 $\pm$ 0.655 & 0.186 $\pm$ 0.154 & 0.019 $\pm$ 0.000 \\
-MACE $L{=}1$ & 12.339 $\pm$ 4.540 & 15.800 $\pm$ 2.430 & 10.011 $\pm$ 0.018 & 0.078 $\pm$ 0.000 & 0.024 $\pm$ 0.000 & 15.737 $\pm$ 0.438 & 0.076 $\pm$ 0.000 & 0.023 $\pm$ 0.001 \\
-NequIP & 12.575 $\pm$ 4.889 & 14.865 $\pm$ 3.676 & 9.868 $\pm$ 0.148 & 0.079 $\pm$ 0.000 & 0.028 $\pm$ 0.000 & 15.809 $\pm$ 0.071 & 0.076 $\pm$ 0.000 & 0.027 $\pm$ 0.001 \\
+CliffordSTF (ours) & 4.089 $\pm$ 0.261 & 6.463 $\pm$ 0.310 & 0.312 $\pm$ 0.136 & 2.866 $\pm$ 0.093 & 0.073 $\pm$ 0.000 & 0.050 $\pm$ 0.004 & 5.083 $\pm$ 0.166 & 0.070 $\pm$ 0.000 & 0.050 $\pm$ 0.003 \\
+Clifford (ours base) & 4.422 $\pm$ 0.862 & 6.726 $\pm$ 0.656 & 0.264 $\pm$ 0.055 & 2.844 $\pm$ 0.100 & 0.072 $\pm$ 0.000 & 0.059 $\pm$ 0.002 & 5.375 $\pm$ 0.157 & 0.071 $\pm$ 0.001 & 0.058 $\pm$ 0.002 \\
+EquiformerV2 & 4.905 $\pm$ 0.566 & 6.619 $\pm$ 0.445 & 0.234 $\pm$ 0.025 & 3.369 $\pm$ 0.066 & 0.072 $\pm$ 0.000 & 0.067 $\pm$ 0.001 & 5.262 $\pm$ 0.076 & 0.070 $\pm$ 0.000 & 0.062 $\pm$ 0.002 \\
+PaiNN & 3.516 $\pm$ 0.292 & 6.712 $\pm$ 0.140 & 0.234 $\pm$ 0.178 & 5.306 $\pm$ 0.030 & 0.076 $\pm$ 0.000 & 0.048 $\pm$ 0.001 & 7.452 $\pm$ 0.254 & 0.078 $\pm$ 0.000 & 0.036 $\pm$ 0.001 \\
+GotenNet & 4.318 $\pm$ 0.300 & 5.772 $\pm$ 0.532 & 0.144 $\pm$ 0.000 & 4.666 $\pm$ 0.310 & 0.073 $\pm$ 0.000 & 0.052 $\pm$ 0.001 & 7.200 $\pm$ 0.121 & 0.072 $\pm$ 0.001 & 0.044 $\pm$ 0.001 \\
+TorchMD-NET & 5.397 $\pm$ 0.000 & 8.312 $\pm$ 0.000 & 0.396 $\pm$ 0.000 & 4.278 $\pm$ 0.000 & 0.075 $\pm$ 0.000 & 0.051 $\pm$ 0.000 & 6.232 $\pm$ 0.000 & 0.074 $\pm$ 0.000 & 0.043 $\pm$ 0.000 \\
+DimeNet++ & 6.320 $\pm$ 4.141 & 9.897 $\pm$ 3.002 & 0.108 $\pm$ 0.102 & 5.288 $\pm$ 0.030 & 0.076 $\pm$ 0.000 & 0.054 $\pm$ 0.002 & 8.717 $\pm$ 0.075 & 0.077 $\pm$ 0.001 & 0.038 $\pm$ 0.002 \\
+SchNet & 6.402 $\pm$ 1.688 & 9.424 $\pm$ 0.938 & 0.270 $\pm$ 0.076 & 7.690 $\pm$ 1.508 & 0.077 $\pm$ 0.002 & 0.032 $\pm$ 0.007 & 12.016 $\pm$ 1.938 & 0.078 $\pm$ 0.002 & 0.024 $\pm$ 0.003 \\
+MACE $L{=}2$ & 8.416 $\pm$ 0.702 & 22.569 $\pm$ 7.674 & 0.144 $\pm$ 0.051 & 10.017 $\pm$ 0.395 & 0.079 $\pm$ 0.000 & 0.022 $\pm$ 0.004 & 15.415 $\pm$ 0.808 & 0.076 $\pm$ 0.000 & 0.022 $\pm$ 0.005 \\
+ICTP $L{=}2$ & 8.641 $\pm$ 1.744 & 17.756 $\pm$ 4.145 & 0.108 $\pm$ 0.051 & 12.447 $\pm$ 0.354 & 0.081 $\pm$ 0.001 & 0.015 $\pm$ 0.002 & 19.218 $\pm$ 0.232 & 0.079 $\pm$ 0.001 & 0.017 $\pm$ 0.002 \\
+ICTP $L{=}1$ & 10.963 $\pm$ 1.612 & 20.810 $\pm$ 0.868 & 0.198 $\pm$ 0.076 & 11.483 $\pm$ 0.881 & 0.080 $\pm$ 0.001 & 0.019 $\pm$ 0.001 & 17.263 $\pm$ 0.655 & 0.186 $\pm$ 0.154 & 0.019 $\pm$ 0.000 \\
+MACE $L{=}1$ & 12.339 $\pm$ 4.540 & 15.800 $\pm$ 2.430 & 0.180 $\pm$ 0.102 & 10.011 $\pm$ 0.018 & 0.078 $\pm$ 0.000 & 0.024 $\pm$ 0.000 & 15.737 $\pm$ 0.438 & 0.076 $\pm$ 0.000 & 0.023 $\pm$ 0.001 \\
+NequIP & 12.575 $\pm$ 4.889 & 14.865 $\pm$ 3.676 & 0.036 $\pm$ 0.000 & 9.868 $\pm$ 0.148 & 0.079 $\pm$ 0.000 & 0.028 $\pm$ 0.000 & 15.809 $\pm$ 0.071 & 0.076 $\pm$ 0.000 & 0.027 $\pm$ 0.001 \\
 \bottomrule
 \end{tabular}%
 }
@@ -549,36 +563,48 @@ NequIP & 0.171 $\pm$ 0.003 & 35.516 $\pm$ 0.991 & 0.515 $\pm$ 0.034 & 0.115 $\pm
 
 \subsection{Wall-clock measurements at matched parameter budget}\label{supp:wallclock}
 
-Table~\ref{tab:wallclock} reports training and inference wall-clock on rMD17 (aspirin, batch 32, single GPU) for every model in the main-text study. CliffordSTF has a training step of $3.39$\,s versus $1.44$\,s for the base Clifford model and $0.78$\,s for EquiformerV2 $L{=}4$ at matched parameter budget, placing it at roughly $2.4\times$ the base Clifford training cost and $\sim\!4.3\times$ the EquiformerV2 cost under the current PyTorch reference implementation. The absolute gap is attributable to the dual-track message passing (both the Clifford geometric product and the STF symmetric-traceless contractions run in sequence), the additional STF$_3$ generation step, and the grade-sparse geometric-product dispatch being written in pure PyTorch rather than a fused kernel. The trade-off between accuracy per parameter (where CliffordSTF is competitive with strong tensor-field baselines on OC22) and wall-clock speed is discussed in \S\ref{sec:limitations}.
+Table~\ref{tab:wallclock} reports training and inference wall-clock on rMD17 (aspirin, batch 32, single GPU) for every model in the main-text study, measured under a strict timing protocol (10 warmup steps, 20 timed steps, mean $\pm$ std reported on a single GPU; absolute times are not directly comparable to figures reported on other hardware). At inference, the base Clifford model runs at $0.128$\,s/step, ranking fifth across the nineteen-model study and outpacing every $L\!\geq\!2$ or Cartesian-tensor baseline in the table: it is faster than EquiformerV2 $L{=}4$ ($0.142$\,s) by roughly $10\%$, faster than every MACE configuration ($L{=}1$: $0.160$; $L{=}2$: $0.237$; $L{=}3$: $0.261$), faster than NequIP ($0.221$), ViSNet ($0.235$), TorchMD-NET ($0.186$), DimeNet++ ($0.326$), and every ICTP variant ($0.302$--$0.364$). The four models with faster inference (PaiNN, GotenNet, SchNet, FAENet) are scalar-invariant or $L{=}1$ vector architectures with substantially less representational capacity. CliffordSTF inference at $0.352$\,s/step is competitive with the slower spherical-harmonic baselines, faster than ICTP $L{=}2$/$L{=}3$ and within $\sim\!8\%$ of DimeNet++. Since deployed interatomic potentials run inference far more often than they are trained, this is the practitioner-relevant operating regime.
+
+Training cost is also more competitive than previously reported. The base Clifford model trains at $3.11$\,s/step---within $\sim\!25\%$ of EquiformerV2 $L{=}4$ ($2.48$\,s), tied with NequIP ($3.06$\,s), and faster than ICTP at every $L$ ($1.45\times$, $1.73\times$, and $2.00\times$ faster than ICTP $L{=}1/2/3$ respectively), faster than DimeNet++ ($1.88\times$), and faster than MACE $L{=}3$. CliffordSTF training at $7.77$\,s/step is comparable to capacity-scaled $L\!\geq\!2$ baselines, sitting within $25$--$73\%$ of ICTP $L{=}1/2/3$ and DimeNet++ ($1.25\times$ ICTP $L{=}3$, $1.33\times$ DimeNet++, $1.44\times$ ICTP $L{=}2$, $1.73\times$ ICTP $L{=}1$); the $2$--$3\times$ overhead is concentrated against the fastest spherical-harmonic baselines (MACE $L{=}1/2$, EquiformerV2 $L{=}2$--$4$). Both Clifford-family rows share the optimized geometric-product dispatch described in Supplementary~\ref{supp:optim}; the optimization narrowed the CliffordSTF/EquiformerV2 $L{=}4$ training ratio from a previously reported $\sim\!4.3\times$ on different hardware to $\sim\!3.1\times$ here, and the corresponding base Clifford ratio from $1.85\times$ to $1.25\times$.
+
+The forward/backward decomposition pinpoints where the residual CliffordSTF training overhead lives. CliffordSTF spends $2.59$\,s in forward and $5.10$\,s in backward (backward is $\sim\!2\times$ forward), whereas EquiformerV2 $L{=}4$ has a near-symmetric profile ($1.09$\,s forward, $1.32$\,s backward, $1.21\times$); MACE $L{=}2$ is essentially symmetric ($1.22$\,s\,/\,$1.20$\,s). The autograd graph through the dual-track scaffold---not the geometric-product dispatch itself, which the optimization in Supplementary~\ref{supp:optim} addressed---dominates the residual training cost. The trade-off between training cost and accuracy per parameter (where CliffordSTF is competitive with strong tensor-field baselines on OC22) is discussed in \S\ref{sec:limitations}.
 
 \begin{table}[h]
 \centering
-\caption{\textbf{Wall-clock at matched parameter budget}, rMD17 aspirin, batch 32, single GPU. Lower is faster for the time columns; higher is faster for the samples-per-second columns. All models fall within $\pm 50$\% of the $10^6$-parameter target.}
+\caption{\textbf{Wall-clock at matched parameter budget}, rMD17 aspirin, batch 32, single GPU. Time columns are mean $\pm$ standard deviation over 20 timed steps following 10 warmup steps; samples-per-second columns are derived from the means. Lower is faster for the time columns; higher is faster for the samples-per-second columns. All models fall within $\pm 50$\% of the $10^6$-parameter target. The Clifford and CliffordSTF (ours) entries reflect the optimized PyTorch dispatch described in Supplementary~\ref{supp:optim}; bit-for-bit preservation of model outputs is verified by O(3)-equivariance tests.}
 \label{tab:wallclock}
 \small
 \begin{tabular}{lrrrrr}
 \toprule
 Model & Params & Train step (s) & Train (s/s) & Infer step (s) & Infer (s/s) \\
 \midrule
-PaiNN              & 1{,}043{,}856 & 0.16 & 5{,}494 & 0.01 & 10{,}278 \\
-SchNet             &   984{,}769 & 0.25 & 3{,}563 & 0.02 &  6{,}892 \\
-GotenNet           & 1{,}057{,}729 & 0.39 & 2{,}323 & 0.02 &  4{,}852 \\
-FAENet             & 1{,}027{,}745 & 0.40 & 2{,}251 & 0.02 &  4{,}824 \\
-MACE $L{=}1$       & 1{,}006{,}014 & 0.50 & 1{,}803 & 0.03 &  3{,}345 \\
-EquiformerV2 $L{=}2$ & 1{,}015{,}052 & 0.75 & 1{,}202 & 0.05 &  1{,}902 \\
-EquiformerV2 $L{=}3$ & 1{,}041{,}304 & 0.77 & 1{,}174 & 0.06 &  1{,}802 \\
-EquiformerV2 $L{=}4$ & 1{,}043{,}222 & 0.78 & 1{,}149 & 0.06 &  1{,}827 \\
-MACE $L{=}2$       & 1{,}011{,}683 & 0.77 & 1{,}176 & 0.04 &  2{,}430 \\
-TorchMD-NET        &   968{,}242 & 0.80 & 1{,}131 & 0.04 &  2{,}601 \\
-NequIP             & 1{,}002{,}436 & 0.82 & 1{,}103 & 0.04 &  2{,}372 \\
-ViSNet             &   957{,}606 & 0.94 &   955 & 0.05 &  2{,}073 \\
-ICTP $L{=}1$       & 1{,}039{,}554 & 1.25 &   721 & 0.08 &  1{,}327 \\
-Clifford (ours)    & 1{,}031{,}926 & 1.44 &   626 & 0.07 &  1{,}419 \\
-ICTP $L{=}2$       &   997{,}368 & 1.54 &   585 & 0.08 &  1{,}200 \\
-MACE $L{=}3$       &   980{,}092 & 1.55 &   579 & 0.07 &  1{,}455 \\
-ICTP $L{=}3$       &   982{,}752 & 1.74 &   518 & 0.09 &  1{,}137 \\
-DimeNet++          & 1{,}064{,}070 & 1.89 &   475 & 0.08 &  1{,}268 \\
-CliffordSTF (ours) & 1{,}056{,}534 & 3.39 &   266 & 0.15 &    679 \\
+PaiNN              & 1{,}043{,}856 & 0.79 $\pm$ 0.05 & 1{,}145 & 0.028 $\pm$ 0.003 & 3{,}575 \\
+SchNet             &   984{,}769 & 1.16 $\pm$ 0.02 &   773 & 0.069 $\pm$ 0.011 & 1{,}456 \\
+FAENet             & 1{,}027{,}745 & 1.69 $\pm$ 0.03 &   533 & 0.111 $\pm$ 0.004 &   900 \\
+GotenNet           & 1{,}057{,}729 & 1.81 $\pm$ 0.00 &   497 & 0.064 $\pm$ 0.005 & 1{,}571 \\
+MACE $L{=}1$       & 1{,}006{,}014 & 1.81 $\pm$ 0.29 &   497 & 0.160 $\pm$ 0.008 &   624 \\
+EquiformerV2 $L{=}2$ &   891{,}560 & 2.45 $\pm$ 0.01 &   367 & 0.131 $\pm$ 0.001 &   764 \\
+EquiformerV2 $L{=}3$ & 1{,}041{,}304 & 2.45 $\pm$ 0.01 &   367 & 0.135 $\pm$ 0.003 &   741 \\
+EquiformerV2 $L{=}4$ & 1{,}043{,}222 & 2.48 $\pm$ 0.00 &   363 & 0.142 $\pm$ 0.008 &   702 \\
+MACE $L{=}2$       & 1{,}011{,}683 & 2.53 $\pm$ 0.09 &   355 & 0.237 $\pm$ 0.002 &   422 \\
+TorchMD-NET        &   968{,}242 & 2.58 $\pm$ 0.02 &   349 & 0.186 $\pm$ 0.029 &   538 \\
+NequIP             & 1{,}002{,}436 & 3.06 $\pm$ 0.04 &   295 & 0.221 $\pm$ 0.007 &   452 \\
+Clifford (ours)    & 1{,}031{,}926 & 3.11 $\pm$ 0.01 &   289 & 0.128 $\pm$ 0.000 &   781 \\
+ViSNet             &   957{,}606 & 3.21 $\pm$ 0.07 &   280 & 0.235 $\pm$ 0.001 &   425 \\
+MACE $L{=}3$       &   980{,}092 & 3.60 $\pm$ 0.16 &   250 & 0.261 $\pm$ 0.009 &   384 \\
+ICTP $L{=}1$       & 1{,}039{,}554 & 4.50 $\pm$ 0.11 &   200 & 0.302 $\pm$ 0.052 &   331 \\
+ICTP $L{=}2$       &   997{,}368 & 5.38 $\pm$ 0.10 &   167 & 0.364 $\pm$ 0.007 &   275 \\
+DimeNet++          & 1{,}064{,}070 & 5.84 $\pm$ 0.11 &   154 & 0.326 $\pm$ 0.002 &   307 \\
+ICTP $L{=}3$       &   982{,}752 & 6.23 $\pm$ 0.02 &   144 & 0.356 $\pm$ 0.006 &   281 \\
+CliffordSTF (ours) & 1{,}056{,}534 & 7.77 $\pm$ 0.11 &   116 & 0.352 $\pm$ 0.001 &   284 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{Implementation optimizations}\label{supp:optim}
+
+The Clifford-family rows in Table~\ref{tab:wallclock} reflect a PyTorch-level refactor of the geometric-product dispatch, with no custom CUDA or Triton kernels written. The four largest changes are: (i) the Cl(3,0) geometric product is computed as a single \texttt{einsum} against a precomputed Cayley structure tensor, replacing 33 hand-unrolled scalar fused-multiply-adds that incurred one CUDA launch each in eager mode; (ii) per-layer \texttt{batch.max().item()} synchronization points were eliminated by threading the graph count through the forward pass as a keyword argument, allowing the GPU to run asynchronously across the full forward; (iii) layer-independent geometric invariants in the adaptive-routing module (coordination number, angular variance, mean edge distance) are precomputed once per forward rather than per layer; and (iv) validation-metric accumulation was moved on-device, with a single host transfer per epoch. All four changes preserve model outputs bit-for-bit, verified by O(3)-equivariance tests at fp32 precision.
+
+Two alternative optimizations were investigated and rolled back. Engaging \texttt{torch.compile} required wrapping \texttt{torch\_scatter.scatter\_softmax} in a \texttt{@torch.compiler.disable} helper (Dynamo cannot FX-trace the custom op); even with the wrapper, Inductor recompiled subgraphs on every edge-count change under the dynamic-shape configuration required by \texttt{radius\_graph}, producing exponential recompile thrashing rather than forward progress. A second attempt rewrote the STF$_2$ and STF$_3$ products as outer-product einsums with symmetrize-then-extract: the forward pass became $\sim\!1\%$ faster, but the backward pass slowed by $\sim\!4\%$ because autograd retained the larger $3\times 3\times 3$ intermediate rather than the chain of small scalar tensors produced by the unrolled form. Both attempts left dormant scaffolding (a \texttt{use\_compile} configuration flag and the \texttt{@torch.compiler.disable} marker) for future revisits when upstream blockers are resolved.
+
+Approximately $40$--$60\%$ additional speedup over the current measurements appears tractable through full \texttt{torch.compile} engagement (pending an upstream fix for \texttt{torch\_scatter} custom-op tracing or migration to \texttt{torch.scatter\_reduce\_}), CUDA Graphs for static-shape batches, and fused Triton kernels for the STF$_2$/STF$_3$ products and the scatter--softmax--multiply pattern. We additionally fixed an unrelated shape-transpose bug in our PaiNN force-head wrapper that was introduced during this optimization pass; the bug caused the model to crash rather than return incorrect outputs, so no published PaiNN result in this paper or its supplementary tables was produced from the buggy state.

@@ -2,8 +2,9 @@
 
 ``compute_loss`` dispatches on ``cfg.dataset.task_type``:
 
-* ``"energy_forces"`` (default) — energy + autograd forces.
-* ``"scalar"`` — energy-only regression (QM9, Molecule3D).
+* ``"energy_forces"`` (default) and ``"s2ef"`` — energy + autograd forces.
+* ``"scalar"`` and ``"is2re"`` — energy-only regression (QM9, Molecule3D,
+  OC20/OC22 IS2RE).
 
 ``cfg.dataset.*`` controls per-component loss kernels and weighting,
 ``cfg.training.loss`` (``"mse"`` or ``"l1"``) sets the default kernel.
@@ -20,6 +21,9 @@ from torch.nn.functional import l1_loss, mse_loss
 if TYPE_CHECKING:
     from omegaconf import DictConfig
     from torch_geometric.data import Data
+
+SCALAR_TASK_TYPES: frozenset[str] = frozenset({"scalar", "is2re"})
+"""Task-type strings that trigger the energy-only branch."""
 
 
 ForwardResult = (
@@ -123,7 +127,7 @@ def compute_loss(
     loss_fn = mse_loss if loss_type == "mse" else l1_loss
     task_type = cfg.dataset.get("task_type", "energy_forces")
 
-    if task_type == "scalar":
+    if task_type in SCALAR_TASK_TYPES:
         out = forward_model(model, data)
         energy_pred = out[0] if isinstance(out, tuple) else out
         energy_target = (data.energy.view(-1) if hasattr(data, "energy") else data.y.view(-1)).to(

@@ -28,6 +28,7 @@ from torch_scatter import scatter_max
 from tqdm import tqdm
 
 from cliffordstf.training.losses import (
+    SCALAR_TASK_TYPES,
     compute_forces,
     forward_model,
     get_free_atom_mask,
@@ -51,7 +52,7 @@ def evaluate_epoch(
 ) -> dict[str, float]:
     """Evaluate ``model`` on ``loader`` and return task-appropriate metrics."""
     task_type = cfg.dataset.get("task_type", "energy_forces")
-    if task_type == "scalar":
+    if task_type in SCALAR_TASK_TYPES:
         return _evaluate_scalar(model, loader, device, amp_dtype, runtime_stats)
     return _evaluate_energy_forces(model, loader, cfg, device, amp_dtype, runtime_stats)
 

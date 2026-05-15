@@ -126,3 +126,12 @@ def test_evaluate_epoch_scalar_rescales_via_runtime_stats():
         runtime_stats={"std": torch.tensor(3.0)},
     )
     assert abs(rescaled["energy_mae"] - raw["energy_mae"] * 3.0) < 1e-7
+
+
+def test_evaluate_epoch_is2re_alias_triggers_scalar_branch():
+    """is2re task_type should route through the energy-only branch."""
+    model = _ScalarModel(energy_value=1.5)
+    loader = _make_scalar_loader()
+    cfg = OmegaConf.create({"dataset": {"task_type": "is2re"}})
+    metrics = evaluate_epoch(model, loader, cfg, torch.device("cpu"))
+    assert set(metrics.keys()) == {"energy_mae"}

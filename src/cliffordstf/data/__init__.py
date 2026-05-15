@@ -13,6 +13,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from cliffordstf.data.md17 import build_md17_loaders
+from cliffordstf.data.molecule3d import build_molecule3d_loaders
 from cliffordstf.data.oc20 import (
     build_oc20_is2re_loaders,
     build_oc20_s2ef_c2_loaders,
@@ -53,9 +54,10 @@ AVAILABLE_DATASETS: Mapping[str, DatasetFactory] = MappingProxyType(
         "oc20_s2ef_c2": build_oc20_s2ef_c2_loaders,
         "oc22_s2ef": build_oc22_s2ef_loaders,
         "oc22_is2re": build_oc22_is2re_loaders,
+        "molecule3d": build_molecule3d_loaders,
     }
 )
-"""Built-in cliffordstf datasets. Step 6b-3 extends with Molecule3D."""
+"""Built-in cliffordstf datasets (10 entries; full coverage of source registry)."""
 
 
 def build_dataloaders(

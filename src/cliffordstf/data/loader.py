@@ -1,8 +1,8 @@
 """Shared ``DataLoader`` construction helpers.
 
-Ported from ``agents-mlip:configs/dataset_registry.py`` (the
-``build_loader`` and ``_lmdb_worker_init_fn`` helpers; the decorator
-registry is intentionally not ported per Amendment 1 of the design).
+Provides ``build_loader`` and ``_lmdb_worker_init_fn``; the decorator-
+based registry pattern is intentionally not used here per Amendment 1
+of the design.
 """
 
 from __future__ import annotations
@@ -45,8 +45,7 @@ def build_loader(
 
     Centralises ``batch_size``, ``num_workers``, ``pin_memory``,
     ``persistent_workers`` and ``prefetch_factor`` so every dataset gets
-    consistent loader tuning. Mirrors the agents-mlip helper so verbatim
-    behaviour is preserved.
+    consistent loader tuning.
     """
     from torch_geometric.loader import DataLoader
 

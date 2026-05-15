@@ -9,24 +9,23 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
     from torch import nn
-    from torch.utils.data import Dataset
+
+    from cliffordstf.data import LoaderSet
 
 
 ModelFactory = Callable[["DictConfig"], "nn.Module"]
 """A callable that turns a resolved Hydra config into an ``nn.Module``."""
 
-DatasetFactory = Callable[["DictConfig"], "Dataset[Any]"]
-"""A callable that turns a resolved Hydra config into a torch ``Dataset``.
+DatasetFactory = Callable[["DictConfig"], "list[LoaderSet]"]
+"""A callable that turns a resolved config into a list of ``LoaderSet``.
 
-The element type is left as ``Any`` because data items are heterogeneous
-across MLIP datasets (``torch_geometric.data.Data``, dicts, custom Batch
-objects) and validation happens inside the model wrapper, not at this
-boundary (``CODING_RULES.md`` §C.2 boundary exception).
+A factory returns one ``LoaderSet`` per training fold (single-element
+list for non-cross-validated datasets, multi-element for k-fold).
 """
 
 

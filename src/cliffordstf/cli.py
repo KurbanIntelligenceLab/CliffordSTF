@@ -1,18 +1,37 @@
 """``cliffordstf-train`` command-line entrypoint.
 
-Wired in Phase 1 Step 8 (full implementation depends on the trainer + dataset
-adapters from Steps 5-7).
+Wires :func:`cliffordstf.io.config.load_config` ->
+:func:`cliffordstf.data.build_dataloaders` -> :func:`cliffordstf.training.trainer.train`.
+One training run is launched per ``LoaderSet`` returned by the dataset
+factory (multi-fold datasets such as MD17 trigger one run per fold).
 """
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
 
-def main() -> int:
-    """Entrypoint for ``cliffordstf-train``; wired in Phase 1 Step 8."""
-    raise NotImplementedError(
-        "cliffordstf-train is wired in Phase 1 Step 8. "
-        "Run subsequent extraction steps before invoking this CLI."
-    )
+from cliffordstf.data import build_dataloaders
+from cliffordstf.io.config import load_config
+from cliffordstf.training.trainer import train
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Build loaders, run the trainer, and return ``0`` on success."""
+    cfg = load_config(argv)
+    loader_sets = build_dataloaders(cfg)
+    results: list[dict[str, Any]] = []
+    for loader_set in loader_sets:
+        loaders: dict[str, object] = {
+            "train": loader_set.train,
+            "val": loader_set.val,
+        }
+        if loader_set.test is not None:
+            loaders["test"] = loader_set.test
+        results.append(train(cfg, loaders))
+    return 0
 
 
 __all__ = ["main"]

@@ -7,7 +7,7 @@ Merge chain (later overrides earlier):
     4. ``--config <path.yaml>``           — optional user override file
     5. CLI dot-overrides                   — e.g. ``training.lr=1e-3``
 
-Ported from ``agents-mlip:configs/config_utils.py`` with two changes:
+Design notes:
 
 - The packaged ``cliffordstf/configs/`` directory is the default config
   root (resolved relative to this module so editable installs and built

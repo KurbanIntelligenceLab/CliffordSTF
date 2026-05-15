@@ -28,6 +28,7 @@ dependencies = [
   "torch_geometric>=2.5",
   "torch_scatter>=2.1",
   "torch_cluster>=1.6",
+  "scikit-learn>=1.8.0",
 ]
 
 [project.optional-dependencies]
@@ -98,7 +99,7 @@ module = ["baselines.*"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = ["torch_geometric.*", "torch_scatter.*", "torch_cluster.*", "tqdm.*"]
+module = ["torch_geometric.*", "torch_scatter.*", "torch_cluster.*", "tqdm.*", "sklearn.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

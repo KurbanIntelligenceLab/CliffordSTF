@@ -1,0 +1,102 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cliffordstf"
+version = "0.1.0"
+description = "CliffordSTF: a steerable tensor-field model on Clifford algebras for machine learning interatomic potentials."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = "==3.12.*"
+authors = [{ name = "Anonymous" }]
+keywords = ["clifford", "geometric-algebra", "mlip", "machine-learning-interatomic-potentials", "equivariant", "molecular-dynamics"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Chemistry",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+  "numpy>=1.26",
+  "omegaconf>=2.3",
+  "hydra-core>=1.3",
+  "torch>=2.1",
+]
+
+[project.optional-dependencies]
+baselines = [
+]
+
+[project.scripts]
+cliffordstf-train = "cliffordstf.cli:main"
+
+[project.urls]
+Homepage = "https://example.invalid/cliffordstf"
+
+[dependency-groups]
+dev = [
+  "ruff>=0.8",
+  "mypy>=1.13",
+  "pytest>=8.0",
+  "pytest-cov",
+  "hypothesis",
+  "pre-commit>=3.0",
+]
+analysis = [
+  "pandas>=2.0",
+  "openpyxl>=3.1",
+  "matplotlib>=3.8",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cliffordstf", "baselines"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/cliffordstf",
+  "baselines",
+  "README.md",
+  "LICENSE",
+  "pyproject.toml",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["analysis", "baselines"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "ANN", "RUF", "SIM", "PTH", "RET"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN201", "ANN202"]
+
+[tool.ruff.format]
+docstring-code-format = true
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+warn_redundant_casts = true
+files = ["src/cliffordstf"]
+
+[[tool.mypy.overrides]]
+module = ["baselines.*"]
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "baselines/tests"]
+addopts = "-ra --strict-markers --cov=src/cliffordstf"
+markers = [
+  "integration: integration tests",
+  "smoke: end-to-end smoke tests",
+  "gpu: requires GPU",
+  "slow: slow tests",
+]

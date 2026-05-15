@@ -1,2 +1,28 @@
 analysis/
 .DS_Store
+.claude/
+
+# uv
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# build artifacts
+dist/
+build/
+*.egg-info/
+
+# experiment outputs (CODING_RULES.md §D)
+outputs/
+data/raw/
+data/cache/
+
+# IDE
+.idea/
+.vscode/

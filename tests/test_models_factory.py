@@ -9,8 +9,12 @@ import pytest
 from cliffordstf.models import AVAILABLE_MODELS, build_model
 
 
-def test_available_models_starts_empty() -> None:
-    assert dict(AVAILABLE_MODELS) == {}
+def test_available_models_holds_the_three_step4_variants() -> None:
+    assert set(AVAILABLE_MODELS) == {
+        "clifford_stf",
+        "clifford_stf_full",
+        "clifford_stf_full_10m",
+    }
 
 
 def test_build_model_unknown_name_raises_keyerror() -> None:

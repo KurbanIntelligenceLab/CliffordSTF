@@ -27,6 +27,7 @@ dependencies = [
   "torch>=2.1",
   "torch_geometric>=2.5",
   "torch_scatter>=2.1",
+  "torch_cluster>=1.6",
 ]
 
 [project.optional-dependencies]
@@ -56,6 +57,7 @@ analysis = [
 
 [tool.uv.extra-build-dependencies]
 torch-scatter = ["torch"]
+torch-cluster = ["torch"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cliffordstf", "baselines"]

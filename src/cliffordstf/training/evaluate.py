@@ -1,6 +1,6 @@
-"""Validation / test loop for energy + forces models.
+"""Validation / test loop dispatched by ``cfg.dataset.task_type``.
 
-Returns four metrics:
+Energy-forces returns four metrics:
     ``energy_mae``: per-structure energy mean absolute error.
     ``force_mae``: per-component force mean absolute error.
     ``force_cos``: per-atom mean cosine similarity between predicted and
@@ -8,10 +8,18 @@ Returns four metrics:
     ``efwt``: percentage of structures with energy error < 0.02 and per-atom
         max force error < 0.03 (the FairChem "energy-and-forces-within-
         threshold" metric).
+
+Scalar returns one metric:
+    ``energy_mae``: per-structure absolute error on the scalar target.
+
+When ``runtime_stats`` contains a ``"std"`` (and optional ``"mean"``), the
+reported ``energy_mae`` is multiplied by ``std`` so that QM9 / Molecule3D
+metrics are in the dataset's native (physical) units.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, cast
 
 import torch
@@ -38,13 +46,71 @@ def evaluate_epoch(
     cfg: DictConfig,
     device: torch.device,
     amp_dtype: torch.dtype | None = None,
+    *,
+    runtime_stats: Mapping[str, object] | None = None,
 ) -> dict[str, float]:
-    """Evaluate ``model`` on ``loader`` and return energy/force metrics.
+    """Evaluate ``model`` on ``loader`` and return task-appropriate metrics."""
+    task_type = cfg.dataset.get("task_type", "energy_forces")
+    if task_type == "scalar":
+        return _evaluate_scalar(model, loader, device, amp_dtype, runtime_stats)
+    return _evaluate_energy_forces(model, loader, cfg, device, amp_dtype, runtime_stats)
 
-    Energy_forces tasks need gradients for autograd force computation, so the
-    inner loop does not wrap forward in ``torch.no_grad``. AMP is enabled
-    only when ``amp_dtype`` is set and the device is CUDA.
-    """
+
+def _rescale_energy_mae(mae: float, runtime_stats: Mapping[str, object] | None) -> float:
+    if runtime_stats is None:
+        return mae
+    std_raw = runtime_stats.get("std", None)
+    if std_raw is None:
+        return mae
+    if isinstance(std_raw, torch.Tensor):
+        std = float(std_raw.item())
+    else:
+        std = float(cast(float, std_raw))
+    return mae * std
+
+
+def _evaluate_scalar(
+    model: nn.Module,
+    loader: object,
+    device: torch.device,
+    amp_dtype: torch.dtype | None,
+    runtime_stats: Mapping[str, object] | None,
+) -> dict[str, float]:
+    model.eval()
+    use_amp = amp_dtype is not None and device.type == "cuda"
+
+    total_energy_ae = torch.zeros((), device=device, dtype=torch.float64)
+    n_structures = 0
+
+    with torch.no_grad():
+        for data in tqdm(loader, desc="  Val", unit="batch", leave=False):
+            data = data.to(device)
+            with torch.autocast(
+                device_type="cuda",
+                enabled=use_amp,
+                dtype=amp_dtype or torch.float32,
+            ):
+                out = forward_model(model, data)
+            energy_pred = out[0] if isinstance(out, tuple) else out
+            energy_target = (
+                data.energy.view(-1) if hasattr(data, "energy") else data.y.view(-1)
+            ).to(energy_pred.dtype)
+            total_energy_ae += (energy_pred - energy_target).abs().sum().double()
+            n_structures += energy_pred.size(0)
+
+    n = max(1, n_structures)
+    energy_mae = total_energy_ae.item() / n
+    return {"energy_mae": _rescale_energy_mae(energy_mae, runtime_stats)}
+
+
+def _evaluate_energy_forces(
+    model: nn.Module,
+    loader: object,
+    cfg: DictConfig,
+    device: torch.device,
+    amp_dtype: torch.dtype | None,
+    runtime_stats: Mapping[str, object] | None,
+) -> dict[str, float]:
     model.eval()
     eval_on_free = cfg.dataset.get("eval_on_free_atoms", False)
     use_amp = amp_dtype is not None and device.type == "cuda"
@@ -113,8 +179,9 @@ def evaluate_epoch(
     n = max(1, n_structures)
     nf = max(1, n_force_components)
     na = max(1, n_force_atoms)
+    energy_mae = total_energy_ae.item() / n
     return {
-        "energy_mae": total_energy_ae.item() / n,
+        "energy_mae": _rescale_energy_mae(energy_mae, runtime_stats),
         "force_mae": total_force_ae.item() / nf,
         "force_cos": total_cos_sim.item() / na,
         "efwt": total_efwt.item() / n * 100.0,

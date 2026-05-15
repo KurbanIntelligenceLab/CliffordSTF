@@ -30,7 +30,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         }
         if loader_set.test is not None:
             loaders["test"] = loader_set.test
-        results.append(train(cfg, loaders))
+        results.append(
+            train(
+                cfg,
+                loaders,
+                runtime_stats=loader_set.runtime_stats,
+                extra_parts=loader_set.extra_parts,
+            )
+        )
     return 0
 
 

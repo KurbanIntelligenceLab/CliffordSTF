@@ -119,3 +119,46 @@ def test_train_top_level_entrypoint_runs(tmp_path: Path):
     loaders = _make_loaders()
     logs = train(cfg, loaders)
     assert logs["best_epoch"] == 1
+
+
+def test_build_output_dirs_appends_extra_parts(tmp_path: Path):
+    cfg = OmegaConf.create(
+        {
+            "seed": 0,
+            "output_root": str(tmp_path),
+            "model": {"name": "m"},
+            "dataset": {"name": "d", "task_type": "energy_forces"},
+        }
+    )
+    base, _, _ = build_output_dirs(cfg, ("aspirin", "fold1"))
+    assert base == tmp_path / "m" / "d" / "energy_forces" / "0" / "aspirin" / "fold1"
+    assert base.exists()
+
+
+def test_train_with_extra_parts_writes_under_nested_dir(tmp_path: Path):
+    cfg = _tiny_cfg(tmp_path)
+    loaders = _make_loaders()
+    logs = train(cfg, loaders, extra_parts=("aspirin", "fold1"))
+    assert logs["best_epoch"] == 1
+    nested = (
+        tmp_path
+        / cfg.model.name
+        / cfg.dataset.name
+        / cfg.dataset.task_type
+        / str(cfg.seed)
+        / "aspirin"
+        / "fold1"
+    )
+    assert (nested / "models" / "ckpt_last.pth").exists()
+
+
+def test_train_forwards_runtime_stats_to_evaluate(tmp_path: Path):
+    cfg = _tiny_cfg(tmp_path)
+    loaders = _make_loaders()
+    logs_raw = train(cfg, loaders, extra_parts=("raw",))
+    logs_scaled = train(
+        cfg, loaders, runtime_stats={"std": 4.0, "mean": 0.0}, extra_parts=("scaled",)
+    )
+    raw_mae = logs_raw["val_metrics"][-1]["energy_mae"]
+    scaled_mae = logs_scaled["val_metrics"][-1]["energy_mae"]
+    assert abs(scaled_mae - raw_mae * 4.0) < 1e-5

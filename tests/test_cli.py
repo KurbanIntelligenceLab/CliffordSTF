@@ -80,7 +80,9 @@ def test_cli_main_runs_md17_end_to_end(tmp_path: Path) -> None:
     rc = cli.main(["--config", str(yaml_path)])
     assert rc == 0
 
-    fold_dir = output_root / "clifford_stf" / "md17" / "energy_forces" / "0"
+    fold_dir = (
+        output_root / "clifford_stf" / "md17" / "energy_forces" / "0" / "aspirin" / "fold1"
+    )
     assert (fold_dir / "models" / "ckpt_last.pth").exists()
     assert (fold_dir / "models" / "ckpt_best_val.pth").exists()
     assert (fold_dir / "logs" / "logs.json").exists()

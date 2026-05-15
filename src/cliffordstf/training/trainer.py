@@ -39,7 +39,7 @@ from cliffordstf.training.losses import compute_loss
 from cliffordstf.training.optim import build_optimizer, build_scheduler
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sized
+    from collections.abc import Iterable, Mapping, Sized
     from typing import Protocol
 
     from omegaconf import DictConfig
@@ -68,14 +68,20 @@ def resolve_device(cfg: DictConfig) -> torch.device:
     return torch.device(d)
 
 
-def build_output_dirs(cfg: DictConfig) -> tuple[Path, Path, Path]:
+def build_output_dirs(
+    cfg: DictConfig,
+    extra_parts: tuple[str, ...] = (),
+) -> tuple[Path, Path, Path]:
     """Create and return ``(base_dir, model_dir, logs_dir)``.
 
     Layout::
 
-        {output_root}/{model_name}/{dataset_name}/{target_or_task}/{seed}/
+        {output_root}/{model_name}/{dataset_name}/{target_or_task}/{seed}/{extra_parts...}/
             models/
             logs/
+
+    ``extra_parts`` carries dataset-specific path segments (e.g. MD17's
+    ``(molecule, foldN)``) so per-fold runs don't clobber each other.
     """
     target = cfg.dataset.get("target_name", cfg.dataset.get("task_type", "default"))
     base_dir = Path(
@@ -84,6 +90,7 @@ def build_output_dirs(cfg: DictConfig) -> tuple[Path, Path, Path]:
         cfg.dataset.name,
         str(target),
         str(cfg.seed),
+        *extra_parts,
     )
     model_dir = base_dir / "models"
     logs_dir = base_dir / "logs"
@@ -105,6 +112,9 @@ def train_one_run(
     cfg: DictConfig,
     loaders: dict[str, object],
     device: torch.device,
+    *,
+    runtime_stats: Mapping[str, object] | None = None,
+    extra_parts: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     """Train ``cfg.model`` for ``cfg.training.epochs`` epochs and return logs.
 
@@ -117,8 +127,15 @@ def train_one_run(
         ``cfg.training.amp_dtype`` (``"bfloat16"`` or ``"float16"``).
         ``cfg.training.early_stopping.patience`` (default 0 = disabled).
         ``cfg.logging.print_every`` (default 1).
+
+    Args:
+        runtime_stats: Optional dataset-time statistics (e.g. z-score
+            ``mean`` / ``std``) forwarded to :func:`evaluate_epoch` so
+            that scalar metrics are reported in physical units.
+        extra_parts: Path segments appended to ``build_output_dirs`` so
+            per-fold runs don't share an experiment directory.
     """
-    _, model_dir, logs_dir = build_output_dirs(cfg)
+    _, model_dir, logs_dir = build_output_dirs(cfg, extra_parts)
 
     model = build_model(cfg.model.name, cfg).to(device)
     optimizer = build_optimizer(cfg, model)
@@ -231,6 +248,7 @@ def train_one_run(
                     cfg,
                     device,
                     amp_dtype=amp_dtype if use_amp else None,
+                    runtime_stats=runtime_stats,
                 )
             finally:
                 if hasattr(model, "restore_from_ema"):
@@ -321,6 +339,7 @@ def train_one_run(
                 cfg,
                 device,
                 amp_dtype=amp_dtype if use_amp else None,
+                runtime_stats=runtime_stats,
             )
         finally:
             if hasattr(model, "restore_from_ema"):
@@ -331,8 +350,14 @@ def train_one_run(
     return logs
 
 
-def train(cfg: DictConfig, loaders: dict[str, object]) -> dict[str, Any]:
+def train(
+    cfg: DictConfig,
+    loaders: dict[str, object],
+    *,
+    runtime_stats: Mapping[str, object] | None = None,
+    extra_parts: tuple[str, ...] = (),
+) -> dict[str, Any]:
     """Top-level training entrypoint: seed, resolve device, run the loop."""
     SeedManager.set_global_seed(cfg.seed)
     device = resolve_device(cfg)
-    return train_one_run(cfg, loaders, device)
+    return train_one_run(cfg, loaders, device, runtime_stats=runtime_stats, extra_parts=extra_parts)

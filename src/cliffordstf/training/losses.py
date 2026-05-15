@@ -1,8 +1,12 @@
 """Loss kernels and the energy/forces loss dispatcher.
 
-The trainer is energy-forces-only: there is no ``scalar`` / ``is2re`` branch.
-``compute_loss`` reads ``cfg.dataset.*`` for loss-type selection and weighting,
-and ``cfg.training.loss`` (``"mse"`` or ``"l1"``) for the default kernel.
+``compute_loss`` dispatches on ``cfg.dataset.task_type``:
+
+* ``"energy_forces"`` (default) — energy + autograd forces.
+* ``"scalar"`` — energy-only regression (QM9, Molecule3D).
+
+``cfg.dataset.*`` controls per-component loss kernels and weighting,
+``cfg.training.loss`` (``"mse"`` or ``"l1"``) sets the default kernel.
 """
 
 from __future__ import annotations
@@ -96,19 +100,40 @@ def compute_loss(
     cfg: DictConfig,
     training: bool = True,
 ) -> torch.Tensor:
-    """Compute the energy + forces loss for one batch.
+    """Compute the loss for one batch.
+
+    Dispatches on ``cfg.dataset.task_type`` (default ``"energy_forces"``):
+
+    * ``"energy_forces"``: energy + autograd forces (default).
+    * ``"scalar"``: energy-only regression; ``data.force`` is not read.
 
     Reads:
         ``cfg.training.loss``: ``"mse"`` (default) or ``"l1"``.
-        ``cfg.dataset.energy_loss``: ``"per_atom_mae"`` or unset (default loss kernel).
-        ``cfg.dataset.force_loss``: ``"l2norm"`` or unset (default loss kernel).
+        ``cfg.dataset.energy_loss``: ``"per_atom_mae"`` or unset (default
+            loss kernel).
+        ``cfg.dataset.force_loss``: ``"l2norm"`` or unset (default loss
+            kernel). Ignored when ``task_type == "scalar"``.
         ``cfg.dataset.energy_weight`` (default 1.0).
-        ``cfg.dataset.force_weight`` (default 1.0).
-        ``cfg.dataset.train_on_free_atoms`` (default ``False``): drop fixed
-            atoms before computing the force loss.
+        ``cfg.dataset.force_weight`` (default 1.0). Ignored when
+            ``task_type == "scalar"``.
+        ``cfg.dataset.train_on_free_atoms`` (default ``False``): drop
+            fixed atoms before computing the force loss.
     """
     loss_type = cfg.training.get("loss", "mse")
     loss_fn = mse_loss if loss_type == "mse" else l1_loss
+    task_type = cfg.dataset.get("task_type", "energy_forces")
+
+    if task_type == "scalar":
+        out = forward_model(model, data)
+        energy_pred = out[0] if isinstance(out, tuple) else out
+        energy_target = (data.energy.view(-1) if hasattr(data, "energy") else data.y.view(-1)).to(
+            energy_pred.dtype
+        )
+        e_loss_type = cfg.dataset.get("energy_loss", None)
+        if e_loss_type == "per_atom_mae":
+            natoms_per_graph = torch.bincount(data.batch).to(energy_pred.dtype)
+            return per_atom_mae_loss(energy_pred, energy_target, natoms_per_graph)
+        return loss_fn(energy_pred, energy_target)
 
     data.pos.requires_grad_(True)
     out = forward_model(model, data)

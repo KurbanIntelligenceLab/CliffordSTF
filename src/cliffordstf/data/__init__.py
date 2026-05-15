@@ -13,6 +13,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from cliffordstf.data.md17 import build_md17_loaders
+from cliffordstf.data.qm9 import build_qm9_loaders
 from cliffordstf.domain import DatasetFactory
 
 if TYPE_CHECKING:
@@ -33,8 +34,13 @@ class LoaderSet:
     k_folds: int = 1
 
 
-AVAILABLE_DATASETS: Mapping[str, DatasetFactory] = MappingProxyType({"md17": build_md17_loaders})
-"""Built-in cliffordstf datasets. Extended in Step 6b with QM9, OC20, OC22, Molecule3D."""
+AVAILABLE_DATASETS: Mapping[str, DatasetFactory] = MappingProxyType(
+    {
+        "md17": build_md17_loaders,
+        "qm9": build_qm9_loaders,
+    }
+)
+"""Built-in cliffordstf datasets. Extended in 6b-2/3 with OC20, OC22, Molecule3D."""
 
 
 def build_dataloaders(

@@ -66,3 +66,63 @@ def test_evaluate_epoch_force_mae_with_known_offset():
     cfg = OmegaConf.create({"dataset": {}})
     metrics = evaluate_epoch(model, loader, cfg, torch.device("cpu"))
     assert metrics["force_mae"] == 0.5
+
+
+def test_evaluate_epoch_rescales_energy_mae_by_runtime_std():
+    model = _ConstModel(energy_value=3.0, force_value=0.0)
+    loader = _make_loader()
+    cfg = OmegaConf.create({"dataset": {}})
+    metrics = evaluate_epoch(
+        model,
+        loader,
+        cfg,
+        torch.device("cpu"),
+        runtime_stats={"std": 4.0, "mean": 0.0},
+    )
+    assert metrics["energy_mae"] == 2.0 * 4.0
+
+
+class _ScalarModel(nn.Module):
+    """Energy-only model for scalar-task evaluation."""
+
+    def __init__(self, energy_value: float) -> None:
+        super().__init__()
+        self.energy_value = energy_value
+
+    def forward(self, data: Data) -> torch.Tensor:
+        n_graphs = int(data.batch.max().item()) + 1
+        return torch.full((n_graphs,), self.energy_value, device=data.pos.device)
+
+
+def _make_scalar_loader() -> DataLoader:
+    data = Data(
+        z=torch.tensor([1, 6]),
+        pos=torch.tensor([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]),
+        batch=torch.zeros(2, dtype=torch.long),
+        energy=torch.tensor([1.0]),
+    )
+    return DataLoader([data], batch_size=1, shuffle=False)
+
+
+def test_evaluate_epoch_scalar_returns_only_energy_mae():
+    model = _ScalarModel(energy_value=1.5)
+    loader = _make_scalar_loader()
+    cfg = OmegaConf.create({"dataset": {"task_type": "scalar"}})
+    metrics = evaluate_epoch(model, loader, cfg, torch.device("cpu"))
+    assert set(metrics.keys()) == {"energy_mae"}
+    assert abs(metrics["energy_mae"] - 0.5) < 1e-7
+
+
+def test_evaluate_epoch_scalar_rescales_via_runtime_stats():
+    model = _ScalarModel(energy_value=1.0)
+    loader = _make_scalar_loader()
+    cfg = OmegaConf.create({"dataset": {"task_type": "scalar"}})
+    raw = evaluate_epoch(model, loader, cfg, torch.device("cpu"))
+    rescaled = evaluate_epoch(
+        model,
+        loader,
+        cfg,
+        torch.device("cpu"),
+        runtime_stats={"std": torch.tensor(3.0)},
+    )
+    assert abs(rescaled["energy_mae"] - raw["energy_mae"] * 3.0) < 1e-7

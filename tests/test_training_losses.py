@@ -117,3 +117,37 @@ def test_compute_loss_respects_weights():
     loss_e = compute_loss(model, data, cfg_high_e, training=False)
     loss_f = compute_loss(model, _make_data(), cfg_high_f, training=False)
     assert not torch.allclose(loss_e, loss_f)
+
+
+class _EnergyOnlyModel(torch.nn.Module):
+    """Model returning a single energy tensor (no forces)."""
+
+    def forward(self, data: Data) -> torch.Tensor:
+        return data.pos.sum().unsqueeze(0)
+
+
+def test_compute_loss_scalar_mode_skips_forces():
+    model = _EnergyOnlyModel()
+    data = Data(
+        z=torch.tensor([1, 6]),
+        pos=torch.tensor([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]),
+        batch=torch.zeros(2, dtype=torch.long),
+        energy=torch.tensor([0.5]),
+    )
+    cfg = OmegaConf.create({"training": {"loss": "mse"}, "dataset": {"task_type": "scalar"}})
+    loss = compute_loss(model, data, cfg, training=False)
+    assert loss.dim() == 0
+    assert torch.isfinite(loss)
+
+
+def test_compute_loss_scalar_mode_does_not_require_force_attr():
+    model = _EnergyOnlyModel()
+    data = Data(
+        z=torch.tensor([1, 6]),
+        pos=torch.tensor([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]),
+        batch=torch.zeros(2, dtype=torch.long),
+        energy=torch.tensor([0.5]),
+    )
+    assert not hasattr(data, "force")
+    cfg = OmegaConf.create({"training": {"loss": "mse"}, "dataset": {"task_type": "scalar"}})
+    _ = compute_loss(model, data, cfg, training=False)

@@ -1,0 +1,15 @@
+# MACE L=1 baseline. Requires the [baselines] extra
+# (pip install cliffordstf[baselines]) so that mace-torch is available.
+model:
+  name: mace_l1
+  max_ell: 1
+  hidden_irreps: "62x0e + 62x1o"
+  num_interactions: 2
+  correlation: 3
+  num_bessel: 8
+  num_polynomial_cutoff: 5
+  cutoff: 6.0
+  max_neighbors: 50
+  num_elements: 100
+  MLP_irreps: "16x0e"
+  avg_num_neighbors: 50.0

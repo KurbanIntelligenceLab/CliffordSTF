@@ -233,3 +233,37 @@ def test_cli_main_uses_packaged_clifford_baseline(tmp_path: Path) -> None:
     fold_dir = output_root / "clifford" / "md17" / "energy_forces" / "0" / "aspirin" / "fold1"
     assert (fold_dir / "models" / "ckpt_last.pth").exists()
     assert (fold_dir / "logs" / "logs.json").exists()
+
+
+def test_cli_main_uses_packaged_schnet_baseline(tmp_path: Path) -> None:
+    """Drive ``cli.main`` with the ``schnet`` baseline.
+
+    Confirms the plug-in seam works for a PyG-native baseline (SchNet
+    returns bare energy; the trainer computes forces via autograd from
+    ``-dE/dR``). Heavy SchNet knobs are shrunk via CLI dot-overrides
+    for CPU speed.
+    """
+    data_root = tmp_path / "data"
+    output_root = tmp_path / "outputs"
+    yaml_path = _write_dataset_training_override_yaml(
+        tmp_path / "cfg.yaml", data_root=data_root, output_root=output_root
+    )
+    _write_md17_npz(data_root, "aspirin", n_structures=8, natoms=3)
+
+    argv = [
+        "--config",
+        str(yaml_path),
+        "model.name=schnet",
+        "model.hidden_channels=16",
+        "model.num_filters=16",
+        "model.num_interactions=1",
+        "model.num_gaussians=8",
+        "model.cutoff=4.0",
+    ]
+
+    rc = cli.main(argv)
+    assert rc == 0
+
+    fold_dir = output_root / "schnet" / "md17" / "energy_forces" / "0" / "aspirin" / "fold1"
+    assert (fold_dir / "models" / "ckpt_last.pth").exists()
+    assert (fold_dir / "logs" / "logs.json").exists()

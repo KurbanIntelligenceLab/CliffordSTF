@@ -1,0 +1,9 @@
+# SchNet baseline (PyG-native) - data_wrapper adapter applied at the
+# factory level. Target ~985K params (verified against the source repo).
+model:
+  name: schnet
+  hidden_channels: 192
+  num_filters: 192
+  num_interactions: 6
+  num_gaussians: 50
+  cutoff: 6.0

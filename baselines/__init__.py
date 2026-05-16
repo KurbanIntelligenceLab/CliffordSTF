@@ -17,6 +17,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 from baselines.clifford import build_clifford
+from baselines.schnet import build_schnet
 from cliffordstf.domain import ModelFactory
 
 CONFIGS_DIR: Path = Path(__file__).resolve().parent / "configs"
@@ -25,6 +26,7 @@ CONFIGS_DIR: Path = Path(__file__).resolve().parent / "configs"
 AVAILABLE_MODELS: Mapping[str, ModelFactory] = MappingProxyType(
     {
         "clifford": build_clifford,
+        "schnet": build_schnet,
     }
 )
 

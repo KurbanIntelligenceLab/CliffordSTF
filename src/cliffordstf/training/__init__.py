@@ -16,6 +16,7 @@ from cliffordstf.training.checkpointing import (
 )
 from cliffordstf.training.ema import ExponentialMovingAverage
 from cliffordstf.training.evaluate import evaluate_epoch
+from cliffordstf.training.lightning import CliffordSTFLightningModule
 from cliffordstf.training.losses import (
     compute_forces,
     compute_loss,
@@ -27,6 +28,7 @@ from cliffordstf.training.losses import (
 from cliffordstf.training.optim import build_optimizer, build_scheduler
 
 __all__ = [
+    "CliffordSTFLightningModule",
     "ExponentialMovingAverage",
     "build_optimizer",
     "build_scheduler",

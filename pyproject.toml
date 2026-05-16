@@ -24,6 +24,7 @@ classifiers = [
 dependencies = [
   "numpy>=1.26",
   "omegaconf>=2.3",
+  "pytorch-lightning>=2.2",
   "torch>=2.1",
   "torch_geometric>=2.5",
   "torch_scatter>=2.1",
@@ -110,7 +111,7 @@ module = ["baselines.*"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = ["torch_geometric.*", "torch_scatter.*", "torch_sparse.*", "torch_cluster.*", "tqdm.*", "sklearn.*", "lmdb.*"]
+module = ["torch_geometric.*", "torch_scatter.*", "torch_sparse.*", "torch_cluster.*", "tqdm.*", "sklearn.*", "lmdb.*", "pytorch_lightning.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

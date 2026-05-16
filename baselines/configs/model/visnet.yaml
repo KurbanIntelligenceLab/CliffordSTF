@@ -1,0 +1,17 @@
+# ViSNet baseline (PyG-native). derivative flag is resolved from
+# cfg.dataset.task_type at factory time (energy_forces / s2ef -> True).
+model:
+  name: visnet
+  lmax: 1
+  vecnorm_type: null
+  trainable_vecnorm: false
+  num_heads: 8
+  num_layers: 6
+  hidden_channels: 96
+  num_rbf: 32
+  trainable_rbf: false
+  max_z: 100
+  cutoff: 5.0
+  max_num_neighbors: 32
+  vertex: false
+  reduce_op: sum

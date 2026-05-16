@@ -19,6 +19,7 @@ from types import MappingProxyType
 from baselines.clifford import build_clifford
 from baselines.dimenetpp import build_dimenetpp
 from baselines.schnet import build_schnet
+from baselines.visnet import build_visnet
 from cliffordstf.domain import ModelFactory
 
 CONFIGS_DIR: Path = Path(__file__).resolve().parent / "configs"
@@ -29,6 +30,7 @@ AVAILABLE_MODELS: Mapping[str, ModelFactory] = MappingProxyType(
         "clifford": build_clifford,
         "dimenetpp": build_dimenetpp,
         "schnet": build_schnet,
+        "visnet": build_visnet,
     }
 )
 

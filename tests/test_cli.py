@@ -301,3 +301,37 @@ def test_cli_main_uses_packaged_dimenetpp_baseline(tmp_path: Path) -> None:
     fold_dir = output_root / "dimenetpp" / "md17" / "energy_forces" / "0" / "aspirin" / "fold1"
     assert (fold_dir / "models" / "ckpt_last.pth").exists()
     assert (fold_dir / "logs" / "logs.json").exists()
+
+
+def test_cli_main_uses_packaged_visnet_baseline(tmp_path: Path) -> None:
+    """Drive ``cli.main`` with the ``visnet`` baseline.
+
+    ViSNet returns (energy, forces) directly when derivative=True
+    (auto-set from cfg.dataset.task_type=energy_forces). Heavy ViSNet
+    knobs are shrunk via CLI dot-overrides for CPU speed.
+    """
+    data_root = tmp_path / "data"
+    output_root = tmp_path / "outputs"
+    yaml_path = _write_dataset_training_override_yaml(
+        tmp_path / "cfg.yaml", data_root=data_root, output_root=output_root
+    )
+    _write_md17_npz(data_root, "aspirin", n_structures=8, natoms=3)
+
+    argv = [
+        "--config",
+        str(yaml_path),
+        "model.name=visnet",
+        "model.num_heads=2",
+        "model.num_layers=1",
+        "model.hidden_channels=8",
+        "model.num_rbf=8",
+        "model.cutoff=4.0",
+        "model.max_num_neighbors=10",
+    ]
+
+    rc = cli.main(argv)
+    assert rc == 0
+
+    fold_dir = output_root / "visnet" / "md17" / "energy_forces" / "0" / "aspirin" / "fold1"
+    assert (fold_dir / "models" / "ckpt_last.pth").exists()
+    assert (fold_dir / "logs" / "logs.json").exists()

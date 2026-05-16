@@ -33,6 +33,7 @@ from pytorch_lightning.callbacks import EarlyStopping
 
 from cliffordstf.models import build_model
 from cliffordstf.reproducibility import SeedManager
+from cliffordstf.training.ema_callback import EMACallback
 from cliffordstf.training.lightning import CliffordSTFLightningModule
 from cliffordstf.training.trainer import build_output_dirs
 
@@ -66,8 +67,13 @@ def _resolve_precision(cfg: DictConfig, accelerator: str) -> _PrecisionLiteral:
 
 
 def _build_callbacks(cfg: DictConfig) -> list[pl.Callback]:
-    """Build the Step-19 callback set (early stopping only)."""
-    callbacks: list[pl.Callback] = []
+    """Build the default Lightning callback set.
+
+    Always installs :class:`EMACallback` (a no-op when the wrapped model
+    does not expose the EMA contract). Adds :class:`EarlyStopping` when
+    ``cfg.training.early_stopping.patience`` is positive.
+    """
+    callbacks: list[pl.Callback] = [EMACallback()]
     es_cfg = cfg.training.get("early_stopping", None)
     patience = int(es_cfg.get("patience", 0)) if es_cfg else 0
     if patience > 0:

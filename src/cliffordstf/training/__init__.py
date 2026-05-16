@@ -15,6 +15,7 @@ from cliffordstf.training.checkpointing import (
     wait_for_checkpoint,
 )
 from cliffordstf.training.ema import ExponentialMovingAverage
+from cliffordstf.training.ema_callback import EMACallback
 from cliffordstf.training.evaluate import evaluate_epoch
 from cliffordstf.training.lightning import CliffordSTFLightningModule
 from cliffordstf.training.lightning_trainer import train_lightning
@@ -30,6 +31,7 @@ from cliffordstf.training.optim import build_optimizer, build_scheduler
 
 __all__ = [
     "CliffordSTFLightningModule",
+    "EMACallback",
     "ExponentialMovingAverage",
     "build_optimizer",
     "build_scheduler",

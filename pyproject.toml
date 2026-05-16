@@ -27,6 +27,7 @@ dependencies = [
   "torch>=2.1",
   "torch_geometric>=2.5",
   "torch_scatter>=2.1",
+  "torch_sparse>=0.6",
   "torch_cluster>=1.6",
   "scikit-learn>=1.8.0",
   "lmdb>=2.2.0",
@@ -59,6 +60,7 @@ analysis = [
 
 [tool.uv.extra-build-dependencies]
 torch-scatter = ["torch"]
+torch-sparse = ["torch"]
 torch-cluster = ["torch"]
 
 [tool.hatch.build.targets.wheel]
@@ -100,7 +102,7 @@ module = ["baselines.*"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = ["torch_geometric.*", "torch_scatter.*", "torch_cluster.*", "tqdm.*", "sklearn.*", "lmdb.*"]
+module = ["torch_geometric.*", "torch_scatter.*", "torch_sparse.*", "torch_cluster.*", "tqdm.*", "sklearn.*", "lmdb.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

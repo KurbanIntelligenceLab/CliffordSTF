@@ -1,0 +1,14 @@
+# DimeNet++ baseline (PyG-native). Target ~1.06M params (verified against
+# the source repo).
+model:
+  name: dimenetpp
+  hidden_channels: 128
+  out_channels: 1
+  num_blocks: 4
+  int_emb_size: 64
+  basis_emb_size: 8
+  out_emb_channels: 128
+  num_spherical: 7
+  num_radial: 6
+  cutoff: 6.0
+  envelope_exponent: 5

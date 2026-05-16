@@ -18,6 +18,7 @@ from types import MappingProxyType
 
 from baselines.clifford import build_clifford
 from baselines.dimenetpp import build_dimenetpp
+from baselines.painn import build_painn
 from baselines.schnet import build_schnet
 from baselines.visnet import build_visnet
 from cliffordstf.domain import ModelFactory
@@ -29,6 +30,7 @@ AVAILABLE_MODELS: Mapping[str, ModelFactory] = MappingProxyType(
     {
         "clifford": build_clifford,
         "dimenetpp": build_dimenetpp,
+        "painn": build_painn,
         "schnet": build_schnet,
         "visnet": build_visnet,
     }

@@ -25,6 +25,7 @@ bar / logging. No custom callbacks yet.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import pytorch_lightning as pl
@@ -33,6 +34,7 @@ from pytorch_lightning.callbacks import EarlyStopping
 
 from cliffordstf.models import build_model
 from cliffordstf.reproducibility import SeedManager
+from cliffordstf.training.checkpoint_callback import LegacyCheckpointCallback
 from cliffordstf.training.ema_callback import EMACallback
 from cliffordstf.training.lightning import CliffordSTFLightningModule
 from cliffordstf.training.trainer import build_output_dirs
@@ -66,14 +68,19 @@ def _resolve_precision(cfg: DictConfig, accelerator: str) -> _PrecisionLiteral:
     return "bf16-mixed" if dtype == "bfloat16" else "16-mixed"
 
 
-def _build_callbacks(cfg: DictConfig) -> list[pl.Callback]:
+def _build_callbacks(cfg: DictConfig, model_dir: Path) -> list[pl.Callback]:
     """Build the default Lightning callback set.
 
-    Always installs :class:`EMACallback` (a no-op when the wrapped model
-    does not expose the EMA contract). Adds :class:`EarlyStopping` when
+    Always installs :class:`EMACallback` (no-op when the wrapped model
+    does not expose the EMA contract) and :class:`LegacyCheckpointCallback`
+    (writes ``ckpt_last.pth`` / ``ckpt_best_val.pth`` in the legacy
+    schema). Adds :class:`EarlyStopping` when
     ``cfg.training.early_stopping.patience`` is positive.
     """
-    callbacks: list[pl.Callback] = [EMACallback()]
+    callbacks: list[pl.Callback] = [
+        EMACallback(),
+        LegacyCheckpointCallback(model_dir=model_dir),
+    ]
     es_cfg = cfg.training.get("early_stopping", None)
     patience = int(es_cfg.get("patience", 0)) if es_cfg else 0
     if patience > 0:
@@ -119,7 +126,7 @@ def train_lightning(
         metrics. Shape will grow as Steps 20-22 land.
     """
     SeedManager.set_global_seed(cfg.seed)
-    base_dir, _, logs_dir = build_output_dirs(cfg, extra_parts)
+    base_dir, model_dir, logs_dir = build_output_dirs(cfg, extra_parts)
 
     raw_model = build_model(cfg.model.name, cfg, extras=model_extras)
     module = CliffordSTFLightningModule(raw_model, cfg)
@@ -140,7 +147,7 @@ def train_lightning(
         gradient_clip_val=float(grad_clip),
         accumulate_grad_batches=grad_accum,
         inference_mode=False,
-        callbacks=_build_callbacks(cfg),
+        callbacks=_build_callbacks(cfg, model_dir),
         default_root_dir=str(logs_dir),
         logger=False,
         enable_progress_bar=False,

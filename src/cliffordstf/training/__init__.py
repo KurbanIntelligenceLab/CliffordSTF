@@ -8,6 +8,7 @@ users construct ``train`` / ``train_one_run`` via
 
 from __future__ import annotations
 
+from cliffordstf.training.checkpoint_callback import LegacyCheckpointCallback
 from cliffordstf.training.checkpointing import (
     load_checkpoint,
     save_checkpoint,
@@ -33,6 +34,7 @@ __all__ = [
     "CliffordSTFLightningModule",
     "EMACallback",
     "ExponentialMovingAverage",
+    "LegacyCheckpointCallback",
     "build_optimizer",
     "build_scheduler",
     "compute_forces",

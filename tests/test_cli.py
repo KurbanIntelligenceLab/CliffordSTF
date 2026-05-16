@@ -91,6 +91,46 @@ def test_cli_main_unknown_dataset_raises(tmp_path: Path) -> None:
         cli.main(["dataset.name=no_such_dataset", "model.name=clifford_stf"])
 
 
+def test_cli_main_rejects_unknown_engine(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    output_root = tmp_path / "outputs"
+    yaml_path = _write_override_yaml(
+        tmp_path / "cfg.yaml", data_root=data_root, output_root=output_root
+    )
+    _write_md17_npz(data_root, "aspirin", n_structures=8, natoms=3)
+    with pytest.raises(ValueError, match=r"Unsupported cfg\.training\.engine"):
+        cli.main(["--config", str(yaml_path), "training.engine=nope"])
+
+
+def test_cli_main_with_lightning_engine(tmp_path: Path) -> None:
+    """End-to-end smoke that drives cli.main with engine=lightning."""
+    data_root = tmp_path / "data"
+    output_root = tmp_path / "outputs"
+    yaml_path = _write_dataset_training_override_yaml(
+        tmp_path / "cfg.yaml", data_root=data_root, output_root=output_root
+    )
+    _write_md17_npz(data_root, "aspirin", n_structures=8, natoms=3)
+
+    argv = [
+        "--config",
+        str(yaml_path),
+        "training.engine=lightning",
+        "model.name=clifford_stf",
+        "model.n_channels=8",
+        "model.n_interactions=1",
+        "model.n_rbf=8",
+        "model.cutoff=4.0",
+        "model.n_hidden_output=16",
+        "model.max_neighbors=10",
+    ]
+
+    rc = cli.main(argv)
+    assert rc == 0
+
+    fold_dir = output_root / "clifford_stf" / "md17" / "energy_forces" / "0" / "aspirin" / "fold1"
+    assert (fold_dir / "models" / "ckpt_last.pth").exists()
+
+
 def _write_dataset_training_override_yaml(
     path: Path, *, data_root: Path, output_root: Path
 ) -> Path:

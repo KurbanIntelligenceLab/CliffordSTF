@@ -35,6 +35,7 @@ from pytorch_lightning.callbacks import EarlyStopping
 from cliffordstf.models import build_model
 from cliffordstf.reproducibility import SeedManager
 from cliffordstf.training.checkpoint_callback import LegacyCheckpointCallback
+from cliffordstf.training.checkpointing import load_checkpoint
 from cliffordstf.training.ema_callback import EMACallback
 from cliffordstf.training.lightning import CliffordSTFLightningModule
 from cliffordstf.training.trainer import build_output_dirs
@@ -129,6 +130,17 @@ def train_lightning(
     base_dir, model_dir, logs_dir = build_output_dirs(cfg, extra_parts)
 
     raw_model = build_model(cfg.model.name, cfg, extras=model_extras)
+
+    # Auto-resume: if a legacy-format ckpt_last.pth exists under model_dir,
+    # restore model weights before wrapping in the LightningModule. Lightning
+    # starts fresh optimizer / scheduler state - documented limitation; the
+    # bulk of restart-correctness comes from model weight continuity.
+    resume_path = model_dir / "ckpt_last.pth"
+    resumed_from: str | None = None
+    if resume_path.is_file():
+        load_checkpoint(resume_path, raw_model)
+        resumed_from = str(resume_path)
+
     module = CliffordSTFLightningModule(raw_model, cfg, runtime_stats=runtime_stats)
 
     accelerator = _resolve_accelerator(cfg)
@@ -169,6 +181,7 @@ def train_lightning(
         "output_dir": str(base_dir),
         "test_metrics": test_metrics,
         "runtime_stats": dict(runtime_stats) if runtime_stats is not None else None,
+        "resumed_from": resumed_from,
     }
 
 

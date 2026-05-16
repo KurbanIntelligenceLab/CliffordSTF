@@ -95,6 +95,36 @@ def test_train_lightning_with_test_loader(tmp_path: Path) -> None:
     assert isinstance(result["test_metrics"], list)
 
 
+def test_train_lightning_resumes_from_ckpt_last(tmp_path: Path) -> None:
+    """A second train_lightning call picks up model weights from ckpt_last.pth."""
+    cfg = _tiny_cliffordstf_cfg(tmp_path)
+    items = _md17_like_batch()
+
+    # First run: writes ckpt_last.pth.
+    result1 = train_lightning(
+        cfg,
+        {
+            "train": DataLoader(items[:4], batch_size=2, shuffle=False),
+            "val": DataLoader(items[4:], batch_size=2, shuffle=False),
+        },
+        extra_parts=("aspirin", "fold1"),
+    )
+    assert result1["resumed_from"] is None
+    ckpt_last = Path(result1["output_dir"]) / "models" / "ckpt_last.pth"
+    assert ckpt_last.is_file()
+
+    # Second run: same output_dir, should pick up the prior checkpoint.
+    result2 = train_lightning(
+        cfg,
+        {
+            "train": DataLoader(items[:4], batch_size=2, shuffle=False),
+            "val": DataLoader(items[4:], batch_size=2, shuffle=False),
+        },
+        extra_parts=("aspirin", "fold1"),
+    )
+    assert result2["resumed_from"] == str(ckpt_last)
+
+
 def test_train_lightning_logs_energy_forces_metrics(tmp_path: Path) -> None:
     """val_energy_mae / val_force_mae / val_force_cos / val_efwt are populated."""
     import pytorch_lightning as pl

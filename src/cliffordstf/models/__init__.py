@@ -18,6 +18,26 @@ if TYPE_CHECKING:
     from torch import nn
 
 
+SUPPORTED_MODEL_INTERFACES: frozenset[str] = frozenset({"data_wrapper"})
+"""Values of ``cfg.model.interface`` that ``_build`` recognises.
+
+The cliffordstf trainer's :func:`cliffordstf.training.losses.forward_model`
+implements the ``data_wrapper`` contract (``model(data) -> energy`` or
+``(energy, forces)``). Configs with a different ``interface`` are
+rejected at construction time so silent divergence cannot accumulate.
+"""
+
+
+def _check_interface(cfg: DictConfig) -> None:
+    """Reject configs whose ``cfg.model.interface`` is not supported."""
+    interface = cfg.model.get("interface", "data_wrapper")
+    if interface not in SUPPORTED_MODEL_INTERFACES:
+        raise ValueError(
+            f"Unsupported cfg.model.interface={interface!r}. "
+            f"Expected one of {sorted(SUPPORTED_MODEL_INTERFACES)}."
+        )
+
+
 def _build(cfg: DictConfig) -> CliffordSTFWrapper:
     """Construct a ``CliffordSTFWrapper`` from a resolved config.
 
@@ -25,6 +45,7 @@ def _build(cfg: DictConfig) -> CliffordSTFWrapper:
     ``clifford_stf_full`` / ``clifford_stf_full_10m``. The variants differ only
     in YAML hyperparameters; the factory body is shared.
     """
+    _check_interface(cfg)
     m = cfg.model
     return CliffordSTFWrapper(
         n_atom_types=m.get("n_atom_types", 100),
@@ -105,6 +126,7 @@ def build_model(
 
 __all__ = [
     "AVAILABLE_MODELS",
+    "SUPPORTED_MODEL_INTERFACES",
     "build_clifford_stf",
     "build_clifford_stf_full",
     "build_clifford_stf_full_10m",

@@ -36,6 +36,7 @@ dependencies = [
 [project.optional-dependencies]
 baselines = [
   "schnetpack>=2.0",
+  "torchmd-net>=2.0",
 ]
 
 [project.scripts]

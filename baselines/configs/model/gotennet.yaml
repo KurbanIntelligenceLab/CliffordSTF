@@ -1,0 +1,12 @@
+# GotenNet baseline. Requires the [baselines] extra
+# (pip install cliffordstf[baselines]) so that gotennet is available.
+# Target ~1.06M params (verified against the source repo).
+model:
+  name: gotennet
+  n_atom_basis: 96
+  n_interactions: 5
+  cutoff: 6.0
+  max_num_neighbors: 50
+  cutoff_fn_name: cosine
+  pooling: auto
+  direct_forces: true

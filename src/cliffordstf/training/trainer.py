@@ -44,6 +44,8 @@ if TYPE_CHECKING:
 
     from omegaconf import DictConfig
 
+    from cliffordstf.domain import ModelFactory
+
     class _Loader(Iterable[Any], Sized, Protocol):
         """Anything that quacks like a torch DataLoader."""
 
@@ -115,6 +117,7 @@ def train_one_run(
     *,
     runtime_stats: Mapping[str, object] | None = None,
     extra_parts: tuple[str, ...] = (),
+    model_extras: Mapping[str, ModelFactory] | None = None,
 ) -> dict[str, Any]:
     """Train ``cfg.model`` for ``cfg.training.epochs`` epochs and return logs.
 
@@ -134,10 +137,13 @@ def train_one_run(
             that scalar metrics are reported in physical units.
         extra_parts: Path segments appended to ``build_output_dirs`` so
             per-fold runs don't share an experiment directory.
+        model_extras: Optional plug-in catalog merged on top of the
+            in-tree ``AVAILABLE_MODELS`` so the CLI can resolve baseline
+            variants (e.g. ``model.name=clifford`` from ``baselines``).
     """
     _, model_dir, logs_dir = build_output_dirs(cfg, extra_parts)
 
-    model = build_model(cfg.model.name, cfg).to(device)
+    model = build_model(cfg.model.name, cfg, extras=model_extras).to(device)
     optimizer = build_optimizer(cfg, model)
     scheduler = build_scheduler(cfg, optimizer)
 
@@ -356,8 +362,16 @@ def train(
     *,
     runtime_stats: Mapping[str, object] | None = None,
     extra_parts: tuple[str, ...] = (),
+    model_extras: Mapping[str, ModelFactory] | None = None,
 ) -> dict[str, Any]:
     """Top-level training entrypoint: seed, resolve device, run the loop."""
     SeedManager.set_global_seed(cfg.seed)
     device = resolve_device(cfg)
-    return train_one_run(cfg, loaders, device, runtime_stats=runtime_stats, extra_parts=extra_parts)
+    return train_one_run(
+        cfg,
+        loaders,
+        device,
+        runtime_stats=runtime_stats,
+        extra_parts=extra_parts,
+        model_extras=model_extras,
+    )

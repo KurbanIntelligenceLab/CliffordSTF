@@ -20,6 +20,7 @@ from baselines.clifford import build_clifford
 from baselines.dimenetpp import build_dimenetpp
 from baselines.faenet import build_faenet
 from baselines.gotennet import build_gotennet
+from baselines.nequip import build_nequip
 from baselines.painn import build_painn
 from baselines.schnet import build_schnet
 from baselines.torchmdnet import build_torchmdnet
@@ -35,6 +36,7 @@ AVAILABLE_MODELS: Mapping[str, ModelFactory] = MappingProxyType(
         "dimenetpp": build_dimenetpp,
         "faenet": build_faenet,
         "gotennet": build_gotennet,
+        "nequip": build_nequip,
         "painn": build_painn,
         "schnet": build_schnet,
         "torchmdnet": build_torchmdnet,

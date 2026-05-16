@@ -245,6 +245,7 @@ dependencies = [
 baselines = [
     { name = "faenet" },
     { name = "gotennet" },
+    { name = "nequip" },
     { name = "schnetpack" },
     { name = "torchmd-net" },
 ]
@@ -269,6 +270,7 @@ requires-dist = [
     { name = "faenet", marker = "extra == 'baselines'", specifier = ">=0.1" },
     { name = "gotennet", marker = "extra == 'baselines'", specifier = ">=0.1" },
     { name = "lmdb", specifier = ">=2.2.0" },
+    { name = "nequip", marker = "extra == 'baselines'", specifier = ">=0.16" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "omegaconf", specifier = ">=2.3" },
     { name = "schnetpack", marker = "extra == 'baselines'", specifier = ">=2.0" },
@@ -1087,6 +1089,29 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a2/6e/371856a3fb9d31ca8dac321cda606860fa4548858c0cc45d9d1d4ca2628b/mypy_extensions-1.1.0.tar.gz", hash = "sha256:52e68efc3284861e772bbcd66823fde5ae21fd2fdb51c62a211403730b916558", size = 6343, upload-time = "2025-04-22T14:54:24.164Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/79/7b/2c79738432f5c924bef5071f933bcc9efd0473bac3b4aa584a6f7c1c8df8/mypy_extensions-1.1.0-py3-none-any.whl", hash = "sha256:1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505", size = 4963, upload-time = "2025-04-22T14:54:22.983Z" },
+]
+
+[[package]]
+name = "nequip"
+version = "0.17.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ase" },
+    { name = "e3nn" },
+    { name = "hydra-core" },
+    { name = "lightning" },
+    { name = "lmdb" },
+    { name = "matscipy" },
+    { name = "numpy" },
+    { name = "pyyaml" },
+    { name = "requests" },
+    { name = "torch" },
+    { name = "torchmetrics" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/38/ca/80b8914c5f89b780b6c9cbd44fbf686e589088413a5958f8a459f5682ad0/nequip-0.17.1.tar.gz", hash = "sha256:0b2097db8892cde31114673a68382a111f5b14224e3f67420ca17c41abc2eef3", size = 228325, upload-time = "2026-03-25T18:47:05.631Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/53/87/386a11790f3dd651fa71ef64dda80018cb506348c747ef0abcc69615281a/nequip-0.17.1-py3-none-any.whl", hash = "sha256:03ed07c24e7b430371aac480f094751e15d3609d04e37cec29fea0e35ecc1693", size = 297561, upload-time = "2026-03-25T18:47:03.876Z" },
 ]
 
 [[package]]

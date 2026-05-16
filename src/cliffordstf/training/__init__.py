@@ -20,6 +20,7 @@ from cliffordstf.training.ema_callback import EMACallback
 from cliffordstf.training.evaluate import evaluate_epoch
 from cliffordstf.training.lightning import CliffordSTFLightningModule
 from cliffordstf.training.lightning_trainer import train_lightning
+from cliffordstf.training.logs_callback import LegacyLogsCallback
 from cliffordstf.training.losses import (
     compute_forces,
     compute_loss,
@@ -35,6 +36,7 @@ __all__ = [
     "EMACallback",
     "ExponentialMovingAverage",
     "LegacyCheckpointCallback",
+    "LegacyLogsCallback",
     "build_optimizer",
     "build_scheduler",
     "compute_forces",

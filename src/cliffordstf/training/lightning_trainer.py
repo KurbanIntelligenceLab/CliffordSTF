@@ -38,6 +38,7 @@ from cliffordstf.training.checkpoint_callback import LegacyCheckpointCallback
 from cliffordstf.training.checkpointing import load_checkpoint
 from cliffordstf.training.ema_callback import EMACallback
 from cliffordstf.training.lightning import CliffordSTFLightningModule
+from cliffordstf.training.logs_callback import LegacyLogsCallback
 from cliffordstf.training.trainer import build_output_dirs
 
 if TYPE_CHECKING:
@@ -69,18 +70,20 @@ def _resolve_precision(cfg: DictConfig, accelerator: str) -> _PrecisionLiteral:
     return "bf16-mixed" if dtype == "bfloat16" else "16-mixed"
 
 
-def _build_callbacks(cfg: DictConfig, model_dir: Path) -> list[pl.Callback]:
+def _build_callbacks(cfg: DictConfig, model_dir: Path, logs_dir: Path) -> list[pl.Callback]:
     """Build the default Lightning callback set.
 
     Always installs :class:`EMACallback` (no-op when the wrapped model
-    does not expose the EMA contract) and :class:`LegacyCheckpointCallback`
+    does not expose the EMA contract), :class:`LegacyCheckpointCallback`
     (writes ``ckpt_last.pth`` / ``ckpt_best_val.pth`` in the legacy
-    schema). Adds :class:`EarlyStopping` when
-    ``cfg.training.early_stopping.patience`` is positive.
+    schema), and :class:`LegacyLogsCallback` (dumps per-epoch metric
+    history to ``logs.json`` at fit-end). Adds :class:`EarlyStopping`
+    when ``cfg.training.early_stopping.patience`` is positive.
     """
     callbacks: list[pl.Callback] = [
         EMACallback(),
         LegacyCheckpointCallback(model_dir=model_dir),
+        LegacyLogsCallback(logs_dir=logs_dir),
     ]
     es_cfg = cfg.training.get("early_stopping", None)
     patience = int(es_cfg.get("patience", 0)) if es_cfg else 0
@@ -159,7 +162,7 @@ def train_lightning(
         gradient_clip_val=float(grad_clip),
         accumulate_grad_batches=grad_accum,
         inference_mode=False,
-        callbacks=_build_callbacks(cfg, model_dir),
+        callbacks=_build_callbacks(cfg, model_dir, logs_dir),
         default_root_dir=str(logs_dir),
         logger=False,
         enable_progress_bar=False,

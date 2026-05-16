@@ -95,6 +95,26 @@ def test_train_lightning_with_test_loader(tmp_path: Path) -> None:
     assert isinstance(result["test_metrics"], list)
 
 
+def test_train_lightning_writes_logs_json(tmp_path: Path) -> None:
+    """logs.json appears under logs_dir after fit completes."""
+    import json
+
+    cfg = _tiny_cliffordstf_cfg(tmp_path)
+    items = _md17_like_batch()
+    loaders = {
+        "train": DataLoader(items[:4], batch_size=2, shuffle=False),
+        "val": DataLoader(items[4:], batch_size=2, shuffle=False),
+    }
+    result = train_lightning(cfg, loaders, extra_parts=("aspirin", "fold1"))
+    logs_path = Path(result["output_dir"]) / "logs" / "logs.json"
+    assert logs_path.is_file()
+    payload = json.loads(logs_path.read_text())
+    assert "history" in payload
+    assert isinstance(payload["history"], list)
+    assert payload["history"], "history should contain at least one epoch record"
+    assert "config" in payload
+
+
 def test_train_lightning_resumes_from_ckpt_last(tmp_path: Path) -> None:
     """A second train_lightning call picks up model weights from ckpt_last.pth."""
     cfg = _tiny_cliffordstf_cfg(tmp_path)

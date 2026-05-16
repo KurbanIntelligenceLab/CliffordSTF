@@ -17,6 +17,7 @@ from cliffordstf.training.checkpointing import (
 from cliffordstf.training.ema import ExponentialMovingAverage
 from cliffordstf.training.evaluate import evaluate_epoch
 from cliffordstf.training.lightning import CliffordSTFLightningModule
+from cliffordstf.training.lightning_trainer import train_lightning
 from cliffordstf.training.losses import (
     compute_forces,
     compute_loss,
@@ -42,5 +43,6 @@ __all__ = [
     "per_atom_mae_loss",
     "save_checkpoint",
     "save_logs",
+    "train_lightning",
     "wait_for_checkpoint",
 ]

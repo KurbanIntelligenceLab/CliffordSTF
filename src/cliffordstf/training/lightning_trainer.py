@@ -129,7 +129,7 @@ def train_lightning(
     base_dir, model_dir, logs_dir = build_output_dirs(cfg, extra_parts)
 
     raw_model = build_model(cfg.model.name, cfg, extras=model_extras)
-    module = CliffordSTFLightningModule(raw_model, cfg)
+    module = CliffordSTFLightningModule(raw_model, cfg, runtime_stats=runtime_stats)
 
     accelerator = _resolve_accelerator(cfg)
     precision = _resolve_precision(cfg, accelerator)

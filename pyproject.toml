@@ -45,6 +45,9 @@ baselines = [
 # coexist; install whichever variant family you need in its own venv:
 #   uv pip install mace-torch     # for mace_l1 / mace_l2 / mace_l3 / mace_l2_10m
 #   uv pip install nequip         # for nequip
+# The ictp package is not on PyPI and is installed from upstream
+# directly (no pin here):
+#   uv pip install ictp           # for ictp_l1 / ictp_l2 / ictp_l3
 
 [project.scripts]
 cliffordstf-train = "cliffordstf.cli:main"

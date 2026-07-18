@@ -1,0 +1,18 @@
+# ICTP L=1 baseline. Requires the ictp package (not on PyPI; install
+# manually from upstream).
+model:
+  name: ictp_l1
+  l_max_hidden_feats: 1
+  l_max_edge_attrs: 3
+  n_hidden_feats: 10
+  n_product_feats: 10
+  n_interactions: 2
+  correlation: 3
+  n_basis: 8
+  n_polynomial_cutoff: 5
+  cutoff: 6.0
+  n_species: 100
+  avg_n_neighbors: 50.0
+  radial_MLP: [64, 64, 64]
+  readout_MLP: [16]
+  max_neighbors: 50

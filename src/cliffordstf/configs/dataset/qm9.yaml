@@ -1,0 +1,25 @@
+dataset:
+  name: qm9
+  data_root: data/qm9
+  task_type: scalar
+  target_name: U0
+  target_idx: 7
+  normalize: z_score
+  debug_subset: null
+  qm9_targets:
+    mu: 0
+    alpha: 1
+    homo: 2
+    lumo: 3
+    gap: 4
+    r2: 5
+    zpve: 6
+    U0: 7
+    U: 8
+    H: 9
+    G: 10
+    Cv: 11
+
+training:
+  batch_size: 128
+  loss: mse

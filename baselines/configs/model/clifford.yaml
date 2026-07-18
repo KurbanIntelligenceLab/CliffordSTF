@@ -1,0 +1,27 @@
+# Clifford baseline (base) - STF features deactivated.
+# Produced by reusing the in-tree CliffordSTFWrapper with the
+# ABLATION_CONFIGS["baseline"] preset:
+#   stf_mode=none, use_hodge_forces=false, use_adaptive_routing=false,
+#   routing_mode=none, use_cross_track=false.
+# Hyperparameters mirror the source clifford baseline (n_channels=80,
+# n_interactions=5, cutoff=6.0). max_grade is not exposed by the
+# in-tree wrapper; the deactivated-STF preset is the reference here.
+model:
+  name: clifford
+  interface: data_wrapper
+  n_atom_types: 100
+  n_channels: 80
+  n_interactions: 5
+  n_rbf: 50
+  cutoff: 6.0
+  n_hidden_output: 80
+  max_neighbors: 50
+  use_l2: false
+  # STF features deactivated (matches ABLATION_CONFIGS["baseline"]).
+  stf_mode: "none"
+  use_hodge_forces: false
+  use_adaptive_routing: false
+  routing_mode: "none"
+  use_cross_track: false
+  # torch.compile blocked by torch_scatter FX-trace incompat + dynamic shapes.
+  use_compile: false

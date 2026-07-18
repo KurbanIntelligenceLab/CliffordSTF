@@ -1,0 +1,18 @@
+dataset:
+  name: md17
+  data_root: data/md17
+  task_type: energy_forces
+  molecule: aspirin
+  k_folds: 1
+  val_frac: 0.1
+  max_train_samples: 1000
+  test_samples: 1000
+  debug_subset: null
+  energy_weight: 1.0
+  force_weight: 1.0
+  train_on_free_atoms: false
+  eval_on_free_atoms: false
+
+training:
+  batch_size: 32
+  loss: mse

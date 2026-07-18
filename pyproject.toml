@@ -1,0 +1,136 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cliffordstf"
+version = "0.1.0"
+description = "CliffordSTF: a steerable tensor-field model on Clifford algebras for machine learning interatomic potentials."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = "==3.12.*"
+authors = [
+  { name = "Can Polat" },
+  { name = "Erchin Serpedin" },
+  { name = "Mustafa Kurban" },
+  { name = "Hasan Kurban" },
+]
+keywords = ["clifford", "geometric-algebra", "mlip", "machine-learning-interatomic-potentials", "equivariant", "molecular-dynamics"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Chemistry",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+  "numpy>=1.26",
+  "omegaconf>=2.3",
+  "pytorch-lightning>=2.2",
+  "torch>=2.1",
+  "torch_geometric>=2.5",
+  "torch_scatter>=2.1",
+  "torch_sparse>=0.6",
+  "torch_cluster>=1.6",
+  "scikit-learn>=1.8.0",
+  "lmdb>=2.2.0",
+]
+
+[project.optional-dependencies]
+baselines = [
+  "faenet>=0.1",
+  "gotennet>=0.1",
+  "schnetpack>=2.0",
+  "torchmd-net>=2.0",
+]
+# mace-torch (pins e3nn==0.4.4) and nequip (needs e3nn>=0.5.6) cannot
+# coexist; install whichever variant family you need in its own venv:
+#   uv pip install mace-torch     # for mace_l1 / mace_l2 / mace_l3 / mace_l2_10m
+#   uv pip install nequip         # for nequip
+# The ictp package is not on PyPI and is installed from upstream
+# directly (no pin here):
+#   uv pip install ictp           # for ictp_l1 / ictp_l2 / ictp_l3
+
+[project.scripts]
+cliffordstf-train = "cliffordstf.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/KurbanIntelligenceLab/CliffordSTF"
+Repository = "https://github.com/KurbanIntelligenceLab/CliffordSTF"
+Issues = "https://github.com/KurbanIntelligenceLab/CliffordSTF/issues"
+Paper = "https://arxiv.org/abs/2606.29584"
+
+[dependency-groups]
+dev = [
+  "ruff>=0.8",
+  "mypy>=1.13",
+  "pytest>=8.0",
+  "pytest-cov",
+  "hypothesis",
+  "pre-commit>=3.0",
+]
+analysis = [
+  "pandas>=2.0",
+  "openpyxl>=3.1",
+  "matplotlib>=3.8",
+]
+
+[tool.uv.extra-build-dependencies]
+torch-scatter = ["torch"]
+torch-sparse = ["torch"]
+torch-cluster = ["torch"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cliffordstf", "baselines"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/cliffordstf",
+  "baselines",
+  "README.md",
+  "LICENSE",
+  "pyproject.toml",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["analysis", "baselines"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "ANN", "RUF", "SIM", "PTH", "RET"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN201", "ANN202"]
+
+[tool.ruff.format]
+docstring-code-format = true
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+warn_redundant_casts = true
+files = ["src/cliffordstf"]
+
+[[tool.mypy.overrides]]
+module = ["baselines.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["torch_geometric.*", "torch_scatter.*", "torch_sparse.*", "torch_cluster.*", "tqdm.*", "sklearn.*", "lmdb.*", "pytorch_lightning.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "baselines/tests"]
+addopts = "-ra --strict-markers --cov=src/cliffordstf"
+markers = [
+  "integration: integration tests",
+  "smoke: end-to-end smoke tests",
+  "gpu: requires GPU",
+  "slow: slow tests",
+]

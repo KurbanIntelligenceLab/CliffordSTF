@@ -1,0 +1,14 @@
+# MACE L=2 baseline. Requires the [baselines] extra.
+model:
+  name: mace_l2
+  max_ell: 2
+  hidden_irreps: "49x0e + 49x1o + 49x2e"
+  num_interactions: 2
+  correlation: 3
+  num_bessel: 8
+  num_polynomial_cutoff: 5
+  cutoff: 6.0
+  max_neighbors: 50
+  num_elements: 100
+  MLP_irreps: "16x0e"
+  avg_num_neighbors: 50.0

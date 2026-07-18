@@ -1,0 +1,17 @@
+dataset:
+  name: molecule3d
+  data_root: data/molecule3d
+  task_type: scalar
+  target_name: homo_lumo_gap
+  target: 0
+  split_mode: random
+  max_base_mols: null
+  debug_subset: null
+
+training:
+  batch_size: 20
+  loss: l1
+  lr_scheduler:
+    type: step
+    step_size: 10
+    gamma: 0.8

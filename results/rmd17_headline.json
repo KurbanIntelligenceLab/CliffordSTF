@@ -1,0 +1,27 @@
+{
+  "manuscript": "Abstract and main rMD17 comparison",
+  "units": {
+    "E": "meV",
+    "F": "meV/angstrom",
+    "C": "dimensionless"
+  },
+  "cliffordip_doi": "10.1038/s41524-026-02259-8",
+  "rmd17_all_seed_aggregates_meV": [
+    {
+      "model": "clifford",
+      "F": 20.8561,
+      "E": 33.8185,
+      "C": 0.0508,
+      "nmin": 4,
+      "nmax": 4
+    },
+    {
+      "model": "clifford_stf_full",
+      "F": 17.9539,
+      "E": 33.6927,
+      "C": 0.5069,
+      "nmin": 4,
+      "nmax": 4
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+\section{CliffordSTF}\label{sec:method}
+
+
+\subsection{Angular channels and closed-form couplings}\label{sec:limitation}\label{sec:stf_channels}
+
+CliffordSTF augments the $L{\leq}1$ multivector substrate of Section~\ref{sec:background} with symmetric traceless tensors. A rank-$\ell$ STF tensor in three dimensions has $2\ell+1$ independent components and carries angular momentum $L{=}\ell$ \cite{applequist1989traceless}. We use the classical rank-2 and rank-3 STF projectors \cite{thorne1980multipole}
+\begin{align}
+\mathrm{STF}_2(u,v)_{ij} &= \tfrac12(u_iv_j+u_jv_i)-\tfrac13(u\cdot v)\delta_{ij}, \\
+\mathrm{STF}_3(S,v)_{ijk} &= T^{\mathrm{sym}}_{ijk}-\tfrac15(\delta_{ij}A_k+\delta_{ik}A_j+\delta_{jk}A_i),
+\end{align}
+where $T^{\mathrm{sym}}_{ijk}=\tfrac13(S_{ij}v_k+S_{ik}v_j+S_{jk}v_i)$ and $A_k=\tfrac23S_{kl}v_l$. The rank-2 and rank-3 tracks store five and seven independent components, respectively; derivations and storage conventions are given in the ESI.
+
+\begin{theorem}[Geometric-product and STF recovery of the vector tensor product]\label{thm:cg_completeness}
+For $u,v\in\mathbb{R}^3$, the classical $\mathbf{1}\otimes\mathbf{1}=\mathbf{0}\oplus\mathbf{1}\oplus\mathbf{2}$ decomposition \cite{coope1965irreducible} is recovered, up to basis normalisation, by
+\begin{align*}
+[u\otimes v]_{L=0}&=\langle uv\rangle_0, & [u\otimes v]_{L=1}&=\star\langle uv\rangle_2, \\
+[u\otimes v]_{L=2}&=\mathrm{STF}_2(u,v).
+\end{align*}
+Here $\langle\cdot\rangle_k$ extracts grade $k$ and $\star$ is the Hodge dual. All three maps are $\mathrm{SO}(3)$-equivariant.
+\end{theorem}
+
+The result follows directly from eqn~(\ref{eq:decomp}) and $\star(u\wedge v)=u\times v$. Our construction combines these classical Cartesian tensor maps with the Clifford product; higher-order contractions used for the $\mathbf{2}\otimes\mathbf{1}$, $\mathbf{2}\otimes\mathbf{2}$ and $\mathbf{3}\otimes\mathbf{1}$ couplings, truncated at $L_{\max}{=}3$, are detailed in ESI Section~\ref{E-supp:cg_proof}. Primitive-level Cartesian projector checks and end-to-end rotation tests are described in ESI Section~\ref{E-supp:cg_test}.
+
+\subsection{Architecture}\label{sec:architecture}
+
+Figure~\ref{fig:architecture} shows the two feature tracks. Each atom carries a Clifford multivector (8 components per channel), with optional rank-2 STF features (13 components in total) and rank-3 STF features (20 in total). Disabling the added features and readout paths recovers the CliffordIP baseline, including its layer-dependent schedule for progressively activating multivector grades. The implementation uses standard PyTorch operations \cite{paszke2019pytorch} with an $8\times8$ geometric-product Cayley table and closed-form STF maps.
+
+\textbf{Embedding.} Atomic numbers initialise scalar features through a learned embedding. Radial basis functions modulate edge scalars and direction vectors in the Clifford edge feature $\tilde e_{ij}$. A separate rank-2 edge block carries $\mathrm{STF}_2(\hat r_{ij},\hat r_{ij})$. STF node features are initialised with small Gaussian noise ($\sigma=10^{-3}$); edge construction and architectural settings are specified in ESI Sections~\ref{E-supp:edge_embed} and~\ref{E-supp:protocol}.
+
+\textbf{Message passing.} With $\mathrm{GP}$ denoting the geometric product, the Clifford message is
+\begin{align*}
+m^{\mathrm{Cl}}_{j\to i}=\alpha_{ij}\bigl[&W_1\cdot\mathrm{GP}(h_j^{\mathrm{Cl}},\tilde e_{ij}) \\
+&+W_2\cdot\mathrm{GP}(\tilde e_{ij},h_j^{\mathrm{Cl}})+W_{\mathrm{skip}}\cdot h_j^{(0)}\bigr],
+\end{align*}
+where $\alpha_{ij}$ is invariant attention computed from scalar features and radial information. The STF tracks generate higher-rank features and propagate existing features through
+\begin{align*}
+m^{\mathrm{STF}_2}_{j\to i}&=W_g^{(2)}\cdot\mathrm{STF}_2(h_j^{\mathrm{vec}},\hat r_{ij})+\phi(r_{ij})W_p^{(2)}\cdot h_j^{\mathrm{STF}_2}, \\
+m^{\mathrm{STF}_3}_{j\to i}&=W_g^{(3)}\cdot\mathrm{STF}_3(h_j^{\mathrm{STF}_2},\hat r_{ij})+\phi(r_{ij})W_p^{(3)}\cdot h_j^{\mathrm{STF}_3},
+\end{align*}
+with invariant radial weights $\phi$. Every learned linear map mixes channels with the same weights for each component of an irrep: $(W\cdot h)^{(\ell)}_{c,m}=\sum_{c'}W_{cc'}h^{(\ell)}_{c',m}$. This component-shared channel mixing commutes with rotations \cite{shao2025orthonormal}; we apply separate maps to the Clifford grades and STF ranks.
+
+\textbf{Cross-track coupling and updates.} Contracting rank-2 features with Clifford vectors feeds angular information back into the vector track:
+\[
+m^{\mathrm{Cl}}_{j\to i}[\text{grade-1}]\mathrel{+}=W_{\mathrm{cross}}\cdot(h_j^{\mathrm{STF}_2}\cdot h_j^{\mathrm{vec}}).
+\]
+Together with generation of STF features from vectors, this provides bidirectional coupling. At the node-update stage, iterated augmented products combine the tracks through the six bilinear terms listed in ESI Section~\ref{E-supp:aug_prod}, providing correlations up to body order four. A block-diagonal channel map, equivariant gating \cite{weiler20183d}, a residual connection \cite{he2016residual} and track-wise normalisation complete the update. Optional invariant gates modulate STF tracks between layers (ESI Sections~\ref{E-supp:normalization} and~\ref{E-supp:routing}).
+
+\subsection{Energy and force readout}\label{sec:readout}
+
+The energy head combines grade-0 scalars, geometric-product self-interaction scalars and STF Frobenius norms in a multilayer perceptron. Summed per-atom, per-layer contributions give the total energy. The direct force head combines grade-1 vectors and Hodge duals of grade-2 bivectors, with a scatter-summed rank-2 contraction $S\hat r$ gated by invariant STF norms. The larger-model experiments instead use energy-gradient forces, following the conservative force formulation \cite{chmiela2017conservative}, with the protocol specified in Section~\ref{sec:seeds}.
+
+\label{rem:so3_vs_o3}All maps are formulated for rotational $\mathrm{SO}(3)$ equivariance. Polar vectors and Hodge-dual axial vectors transform identically under rotations but have different reflection parities \cite{geiger2022e3nn}. ESI Section~\ref{E-supp:so3_o3} gives the resulting requirements for extending our readout to full $\mathrm{O}(3)$ equivariance.

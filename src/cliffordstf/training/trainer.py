@@ -1,20 +1,4 @@
-"""Training entrypoint and main loop for energy + forces models.
-
-The loop:
-  - constructs the model via :func:`cliffordstf.models.build_model`,
-  - resolves the device, the optimizer, the scheduler, and (optionally) the
-    EMA shadow held inside the wrapper,
-  - resumes from a previous ``ckpt_last.pth`` if one exists,
-  - iterates training and validation epochs with optional AMP, gradient
-    accumulation, and early stopping,
-  - writes a resumable ``ckpt_last.pth`` every epoch and a best-on-val
-    ``ckpt_best_val.pth`` whenever the primary metric improves,
-  - calls :func:`cliffordstf.training.checkpointing.wait_for_checkpoint` so
-    the last async write completes before returning.
-
-The trainer expects ``loaders`` to be a dict with at least ``"train"`` and
-``"val"`` keys, optionally ``"test"``.
-"""
+"""Training entrypoint and main loop for energy + forces models."""
 
 from __future__ import annotations
 
@@ -47,7 +31,7 @@ if TYPE_CHECKING:
     from cliffordstf.domain import ModelFactory
 
     class _Loader(Iterable[Any], Sized, Protocol):
-        """Anything that quacks like a torch DataLoader."""
+        """Data loader protocol."""
 
     class _EmaModule(Protocol):
         def init_ema(self) -> None: ...
@@ -62,6 +46,26 @@ if TYPE_CHECKING:
 PRIMARY_METRIC = "energy_mae"
 
 
+def _monitor_value(val_metrics: dict, cfg: object) -> float:
+    """Value used for early-stopping, best-checkpoint, and plateau LR."""
+    try:
+        mode = cfg.training.get("monitor_metric", "energy_mae")  # type: ignore[attr-defined]
+    except Exception:
+        mode = "energy_mae"
+    if mode == "force_mae":
+        return float(val_metrics.get("force_mae", float("inf")))
+    if mode == "combined":
+        try:
+            ew = float(cfg.dataset.get("energy_weight", 1.0))  # type: ignore[attr-defined]
+            fw = float(cfg.dataset.get("force_weight", 1.0))  # type: ignore[attr-defined]
+        except Exception:
+            ew, fw = 1.0, 1.0
+        return ew * float(val_metrics.get("energy_mae", float("inf"))) + fw * float(
+            val_metrics.get("force_mae", float("inf"))
+        )
+    return float(val_metrics.get("energy_mae", float("inf")))
+
+
 def resolve_device(cfg: DictConfig) -> torch.device:
     """Resolve a torch device from ``cfg.device``. ``"auto"`` picks CUDA when available."""
     d = cfg.get("device", "auto")
@@ -74,17 +78,7 @@ def build_output_dirs(
     cfg: DictConfig,
     extra_parts: tuple[str, ...] = (),
 ) -> tuple[Path, Path, Path]:
-    """Create and return ``(base_dir, model_dir, logs_dir)``.
-
-    Layout::
-
-        {output_root}/{model_name}/{dataset_name}/{target_or_task}/{seed}/{extra_parts...}/
-            models/
-            logs/
-
-    ``extra_parts`` carries dataset-specific path segments (e.g. MD17's
-    ``(molecule, foldN)``) so per-fold runs don't clobber each other.
-    """
+    """Create and return ``(base_dir, model_dir, logs_dir)``."""
     target = cfg.dataset.get("target_name", cfg.dataset.get("task_type", "default"))
     base_dir = Path(
         cfg.get("output_root", "outputs"),
@@ -119,28 +113,7 @@ def train_one_run(
     extra_parts: tuple[str, ...] = (),
     model_extras: Mapping[str, ModelFactory] | None = None,
 ) -> dict[str, Any]:
-    """Train ``cfg.model`` for ``cfg.training.epochs`` epochs and return logs.
-
-    Reads:
-        ``cfg.training.epochs`` (required).
-        ``cfg.training.grad_clip`` (optional float).
-        ``cfg.training.grad_accum_steps`` (default 1).
-        ``cfg.training.val_every`` (default 1).
-        ``cfg.training.amp`` (default ``False``) - enables CUDA AMP.
-        ``cfg.training.amp_dtype`` (``"bfloat16"`` or ``"float16"``).
-        ``cfg.training.early_stopping.patience`` (default 0 = disabled).
-        ``cfg.logging.print_every`` (default 1).
-
-    Args:
-        runtime_stats: Optional dataset-time statistics (e.g. z-score
-            ``mean`` / ``std``) forwarded to :func:`evaluate_epoch` so
-            that scalar metrics are reported in physical units.
-        extra_parts: Path segments appended to ``build_output_dirs`` so
-            per-fold runs don't share an experiment directory.
-        model_extras: Optional plug-in catalog merged on top of the
-            in-tree ``AVAILABLE_MODELS`` so the CLI can resolve baseline
-            variants (e.g. ``model.name=clifford`` from ``baselines``).
-    """
+    """Train ``cfg.model`` for ``cfg.training.epochs`` epochs and return logs."""
     _, model_dir, logs_dir = build_output_dirs(cfg, extra_parts)
 
     model = build_model(cfg.model.name, cfg, extras=model_extras).to(device)
@@ -262,28 +235,35 @@ def train_one_run(
             last_val_metrics = val_metrics
 
             if scheduler is not None and isinstance(scheduler, ReduceLROnPlateau):
-                scheduler.step(val_metrics[PRIMARY_METRIC])
+                scheduler.step(_monitor_value(val_metrics, cfg))
 
             logs["val_metrics"].append(val_metrics)
 
-            val_primary = val_metrics[PRIMARY_METRIC]
+            val_primary = _monitor_value(val_metrics, cfg)
             if val_primary < best_val:
                 best_val = val_primary
                 best_epoch = epoch
                 es_counter = 0
-                save_checkpoint(
-                    model_dir / "ckpt_best_val.pth",
-                    model,
-                    optimizer,
-                    epoch,
-                    metrics={f"best_val_{PRIMARY_METRIC}": best_val},
-                    cfg=cfg,
-                )
+
+                if hasattr(model, "apply_ema"):
+                    cast("_EmaModule", model).apply_ema()
+                try:
+                    save_checkpoint(
+                        model_dir / "ckpt_best_val.pth",
+                        model,
+                        optimizer,
+                        epoch,
+                        metrics={"best_val_monitor": best_val, **val_metrics},
+                        cfg=cfg,
+                    )
+                finally:
+                    if hasattr(model, "restore_from_ema"):
+                        cast("_EmaModule", model).restore_from_ema()
             else:
                 es_counter += 1
         else:
             val_metrics = last_val_metrics if last_val_metrics is not None else {}
-            val_primary = val_metrics.get(PRIMARY_METRIC, float("inf"))
+            val_primary = _monitor_value(val_metrics, cfg)
 
         logs["train_loss"].append(train_loss)
         logs["duration"].append(duration)
@@ -325,7 +305,9 @@ def train_one_run(
         save_logs(logs_dir / "logs.json", logs, cfg=cfg)
 
         if run_val and es_patience > 0 and es_counter >= es_patience:
-            tqdm.write(f"Early stopping at epoch {epoch} (no improvement for {es_patience} epochs)")
+            tqdm.write(
+                f"Early stopping at epoch {epoch} (no improvement for {es_patience} epochs)"
+            )
             break
 
     wait_for_checkpoint()
@@ -336,6 +318,11 @@ def train_one_run(
     logs["total_duration_sec"] = total_duration
 
     if "test" in loaders:
+        if device.type == "cuda":
+            import gc as _gc
+
+            _gc.collect()
+            torch.cuda.empty_cache()
         if hasattr(model, "apply_ema"):
             cast("_EmaModule", model).apply_ema()
         try:

@@ -1,14 +1,4 @@
-"""Loss kernels and the energy/forces loss dispatcher.
-
-``compute_loss`` dispatches on ``cfg.dataset.task_type``:
-
-* ``"energy_forces"`` (default) and ``"s2ef"`` — energy + autograd forces.
-* ``"scalar"`` and ``"is2re"`` — energy-only regression (QM9, Molecule3D,
-  OC20/OC22 IS2RE).
-
-``cfg.dataset.*`` controls per-component loss kernels and weighting,
-``cfg.training.loss`` (``"mse"`` or ``"l1"``) sets the default kernel.
-"""
+"""Loss kernels and the energy/forces loss dispatcher."""
 
 from __future__ import annotations
 
@@ -34,13 +24,7 @@ ForwardResult = (
 
 
 def forward_model(model: nn.Module, data: Data) -> ForwardResult:
-    """Call the wrapper model on a batch using the ``data_wrapper`` interface.
-
-    The model returns either ``(energy, forces)`` (direct forces) or just
-    ``energy`` (autograd forces). Some models also return a third tensor
-    (``dens_loss`` from DeNS auxiliary training). All three shapes are
-    forwarded as-is; the caller decides how to consume them.
-    """
+    """Call the wrapper model on a batch using the ``data_wrapper`` interface."""
     out = model(data)
     if isinstance(out, tuple):
         return cast(ForwardResult, out)
@@ -52,11 +36,7 @@ def compute_forces(
     pos: torch.Tensor,
     create_graph: bool = True,
 ) -> torch.Tensor:
-    """Compute forces as ``-dE/dR`` via autograd.
-
-    Forced to fp32 inside an ``autocast(enabled=False)`` block: half-precision
-    gradients are numerically unstable for force computation.
-    """
+    """Compute forces as ``-dE/dR`` via autograd."""
     with torch.autocast(device_type="cuda", enabled=False):
         energy_f32 = energy.float()
         grad_outputs = torch.autograd.grad(
@@ -80,17 +60,13 @@ def per_atom_mae_loss(
 
 def l2norm_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     """Mean of per-atom L2 norms of the error vector (FairChem ``l2norm``)."""
-    return cast(torch.Tensor, torch.linalg.vector_norm(pred - target, ord=2, dim=-1).mean())
+    return cast(
+        torch.Tensor, torch.linalg.vector_norm(pred - target, ord=2, dim=-1).mean()
+    )
 
 
 def get_free_atom_mask(data: Data) -> torch.Tensor | None:
-    """Boolean mask of free (non-fixed) atoms, or ``None`` if unavailable.
-
-    Convention:
-        - ``data.fixed`` (bool tensor): ``True`` = fixed atom.
-        - ``data.tags`` (int tensor): ``0`` = sub-surface (fixed), ``1`` =
-          surface, ``2`` = adsorbate.
-    """
+    """Boolean mask of free (non-fixed) atoms, or ``None`` if unavailable."""
     if hasattr(data, "fixed") and data.fixed is not None:
         return cast(torch.Tensor, ~data.fixed.bool())
     if hasattr(data, "tags") and data.tags is not None:
@@ -104,25 +80,7 @@ def compute_loss(
     cfg: DictConfig,
     training: bool = True,
 ) -> torch.Tensor:
-    """Compute the loss for one batch.
-
-    Dispatches on ``cfg.dataset.task_type`` (default ``"energy_forces"``):
-
-    * ``"energy_forces"``: energy + autograd forces (default).
-    * ``"scalar"``: energy-only regression; ``data.force`` is not read.
-
-    Reads:
-        ``cfg.training.loss``: ``"mse"`` (default) or ``"l1"``.
-        ``cfg.dataset.energy_loss``: ``"per_atom_mae"`` or unset (default
-            loss kernel).
-        ``cfg.dataset.force_loss``: ``"l2norm"`` or unset (default loss
-            kernel). Ignored when ``task_type == "scalar"``.
-        ``cfg.dataset.energy_weight`` (default 1.0).
-        ``cfg.dataset.force_weight`` (default 1.0). Ignored when
-            ``task_type == "scalar"``.
-        ``cfg.dataset.train_on_free_atoms`` (default ``False``): drop
-            fixed atoms before computing the force loss.
-    """
+    """Compute the loss for one batch."""
     loss_type = cfg.training.get("loss", "mse")
     loss_fn = mse_loss if loss_type == "mse" else l1_loss
     task_type = cfg.dataset.get("task_type", "energy_forces")
@@ -130,9 +88,9 @@ def compute_loss(
     if task_type in SCALAR_TASK_TYPES:
         out = forward_model(model, data)
         energy_pred = out[0] if isinstance(out, tuple) else out
-        energy_target = (data.energy.view(-1) if hasattr(data, "energy") else data.y.view(-1)).to(
-            energy_pred.dtype
-        )
+        energy_target = (
+            data.energy.view(-1) if hasattr(data, "energy") else data.y.view(-1)
+        ).to(energy_pred.dtype)
         e_loss_type = cfg.dataset.get("energy_loss", None)
         if e_loss_type == "per_atom_mae":
             natoms_per_graph = torch.bincount(data.batch).to(energy_pred.dtype)

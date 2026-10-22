@@ -1,8 +1,4 @@
-"""Built-in model factories and a pure ``build_model`` resolver.
-
-No global registry, no decorators, no import-time side effects beyond the
-explicit factory imports below (``CODING_RULES.md`` §C.4 / §L).
-"""
+"""Built-in model factories and a pure ``build_model`` resolver."""
 
 from __future__ import annotations
 
@@ -19,13 +15,7 @@ if TYPE_CHECKING:
 
 
 SUPPORTED_MODEL_INTERFACES: frozenset[str] = frozenset({"data_wrapper"})
-"""Values of ``cfg.model.interface`` that ``_build`` recognises.
-
-The cliffordstf trainer's :func:`cliffordstf.training.losses.forward_model`
-implements the ``data_wrapper`` contract (``model(data) -> energy`` or
-``(energy, forces)``). Configs with a different ``interface`` are
-rejected at construction time so silent divergence cannot accumulate.
-"""
+"""Values of ``cfg.model.interface`` that ``_build`` recognises."""
 
 
 def _check_interface(cfg: DictConfig) -> None:
@@ -39,12 +29,7 @@ def _check_interface(cfg: DictConfig) -> None:
 
 
 def _build(cfg: DictConfig) -> CliffordSTFWrapper:
-    """Construct a ``CliffordSTFWrapper`` from a resolved config.
-
-    Reads ``cfg.model.*`` for the three named variants ``clifford_stf`` /
-    ``clifford_stf_full`` / ``clifford_stf_full_10m``. The variants differ only
-    in YAML hyperparameters; the factory body is shared.
-    """
+    """Construct a ``CliffordSTFWrapper`` from a resolved config."""
     _check_interface(cfg)
     m = cfg.model
     return CliffordSTFWrapper(
@@ -102,22 +87,7 @@ def build_model(
     *,
     extras: Mapping[str, ModelFactory] | None = None,
 ) -> nn.Module:
-    """Build a model by name, optionally extending with plug-in factories.
-
-    Args:
-        name: Name of the model variant (e.g. ``"clifford_stf_full"``).
-        cfg: Resolved Hydra config; passed straight through to the factory.
-        extras: Optional supplementary catalog merged on top of
-            ``AVAILABLE_MODELS``. The CLI uses this to plug in
-            ``baselines.AVAILABLE_MODELS`` when the optional baselines
-            package is installed.
-
-    Returns:
-        The constructed ``nn.Module``.
-
-    Raises:
-        KeyError: If ``name`` is in neither catalog.
-    """
+    """Build a model by name, optionally extending with plug-in factories."""
     catalog: dict[str, ModelFactory] = {**AVAILABLE_MODELS, **(extras or {})}
     if name not in catalog:
         raise KeyError(f"Unknown model {name!r}. Available: {sorted(catalog)}")

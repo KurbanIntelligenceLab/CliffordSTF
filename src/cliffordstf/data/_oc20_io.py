@@ -1,14 +1,4 @@
-"""OC20/OC22 LMDB dataset loader.
-
-Reads LMDB shards from the Open Catalyst datasets and normalises the
-entries to a PyG ``Data`` schema with ``z``, ``pos``, ``y``, ``force``,
-``cell``, ``tags``, ``fixed``, ``sid``, ``fid``. Used by both S2EF and
-IS2RE tasks.
-
-References:
-    OC20: https://fair-chem.github.io/catalysts/datasets/oc20.html
-    OC22: https://fair-chem.github.io/catalysts/datasets/oc22.html
-"""
+"""OC20/OC22 LMDB dataset loader."""
 
 from __future__ import annotations
 
@@ -23,9 +13,7 @@ import torch
 from torch.utils.data import Dataset
 from torch_geometric.data import Data
 
-# Documented but not Literal-enforced: cfg-driven splits flow through as plain
-# strings (config files reference values like "val_ood_ads" that callers may
-# extend without breaking the type hint).
+
 Task = str
 Split = str
 
@@ -33,7 +21,9 @@ _S2EF_TRAIN_SIZES: tuple[str, ...] = ("200k", "2M", "20M", "all")
 _OC22_TASK_DIRS: dict[str, str] = {"s2ef": "s2ef-total", "is2re": "is2re-total"}
 
 
-def _resolve_lmdb_dir(root: str | Path, task: str, split: str, oc22: bool = False) -> Path:
+def _resolve_lmdb_dir(
+    root: str | Path, task: str, split: str, oc22: bool = False
+) -> Path:
     """Resolve the LMDB directory across the three known layouts."""
     root_path = Path(root)
     candidates: list[Path] = [root_path / task / split]
@@ -44,7 +34,9 @@ def _resolve_lmdb_dir(root: str | Path, task: str, split: str, oc22: bool = Fals
         candidates.insert(0, root_path / _OC22_TASK_DIRS[task] / split)
     if task == "s2ef":
         if split == "train":
-            candidates.extend(root_path / task / size / split for size in _S2EF_TRAIN_SIZES)
+            candidates.extend(
+                root_path / task / size / split for size in _S2EF_TRAIN_SIZES
+            )
         else:
             candidates.append(root_path / task / "all" / split)
 
@@ -68,17 +60,13 @@ def _as_tensor(value: object) -> torch.Tensor:
 
 def _is_atomic_data_like(obj: object) -> bool:
     """Duck-type FairChem/OCP ``AtomicData`` (non-PyG, non-dict)."""
-    return all(hasattr(obj, attr) for attr in ("atomic_numbers", "pos", "energy", "forces"))
+    return all(
+        hasattr(obj, attr) for attr in ("atomic_numbers", "pos", "energy", "forces")
+    )
 
 
 class OC20LMDBDataset(Dataset[Data]):
-    """Map-style dataset over OC20/OC22 LMDB shards.
-
-    Each LMDB shard is opened lazily on the first ``__getitem__`` so
-    DataLoader workers can fork safely. ``_close_envs`` resets the
-    handles before the parent forks; ``__getstate__`` closes envs
-    automatically when the dataset is pickled into a worker.
-    """
+    """Map-style dataset over OC20/OC22 LMDB shards."""
 
     def __init__(
         self,
@@ -118,7 +106,11 @@ class OC20LMDBDataset(Dataset[Data]):
             )
             with env.begin() as txn:
                 raw_len = txn.get(b"length")
-                n = pickle.loads(raw_len) if raw_len is not None else txn.stat()["entries"]
+                n = (
+                    pickle.loads(raw_len)
+                    if raw_len is not None
+                    else txn.stat()["entries"]
+                )
             env.close()
             self._shard_lengths.append(n)
             cumulative += n
@@ -149,7 +141,9 @@ class OC20LMDBDataset(Dataset[Data]):
         shard_idx = bisect.bisect_right(self._cumulative_lengths, global_idx)
         if shard_idx >= len(self._cumulative_lengths):
             raise IndexError(f"Global index {global_idx} out of range.")
-        local_idx = global_idx - (self._cumulative_lengths[shard_idx - 1] if shard_idx > 0 else 0)
+        local_idx = global_idx - (
+            self._cumulative_lengths[shard_idx - 1] if shard_idx > 0 else 0
+        )
         return shard_idx, local_idx
 
     def __len__(self) -> int:
@@ -157,13 +151,17 @@ class OC20LMDBDataset(Dataset[Data]):
 
     def __getitem__(self, idx: int) -> Data:
         if idx < 0 or idx >= self._total_len:
-            raise IndexError(f"Index {idx} out of range for dataset of size {self._total_len}.")
+            raise IndexError(
+                f"Index {idx} out of range for dataset of size {self._total_len}."
+            )
         shard_idx, local_idx = self._global_to_shard(idx)
         env = self._get_env(shard_idx)
         with env.begin() as txn:
             raw = txn.get(str(local_idx).encode("ascii"))
             if raw is None:
-                raise KeyError(f"Key {local_idx} not found in shard {self.lmdb_paths[shard_idx]}.")
+                raise KeyError(
+                    f"Key {local_idx} not found in shard {self.lmdb_paths[shard_idx]}."
+                )
         return self._to_pyg_data(pickle.loads(raw))
 
     def _to_pyg_data(self, obj: object) -> Data:
@@ -177,11 +175,7 @@ class OC20LMDBDataset(Dataset[Data]):
         raise TypeError(f"Unexpected LMDB entry type: {type(obj).__name__}.")
 
     def _close_envs(self) -> None:
-        """Close every open LMDB environment so they reopen lazily.
-
-        Called by ``build_loader`` via ``_lmdb_worker_init_fn`` so each
-        DataLoader worker gets its own file descriptors after fork.
-        """
+        """Close every open LMDB environment so they reopen lazily."""
         if not hasattr(self, "_envs"):
             return
         for i, env in enumerate(self._envs):

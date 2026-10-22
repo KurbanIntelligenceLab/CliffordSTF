@@ -1,28 +1,4 @@
-"""PyTorch Lightning wrapper around any cliffordstf-compatible model.
-
-Step 18 of the Phase-2 Lightning migration. Provides
-:class:`CliffordSTFLightningModule`, a thin :class:`pytorch_lightning.LightningModule`
-that wraps an existing ``nn.Module`` (in-tree :mod:`cliffordstf.models` or
-plug-in :mod:`baselines`) and delegates loss / optimizer / scheduler
-construction to the existing builders so the same YAML drives both the
-legacy :func:`cliffordstf.training.trainer.train` loop and a Lightning
-:class:`pytorch_lightning.Trainer`.
-
-The wrapped model must satisfy the ``data_wrapper`` interface:
-``model(data) -> energy`` or ``(energy, forces)``. Force tasks rely on
-autograd, so the Lightning :class:`Trainer` configuration must pass
-``inference_mode=False`` (Lightning's default
-``torch.inference_mode()`` would otherwise disable the autograd graph
-in :meth:`validation_step`).
-
-Step 23 added rich validation / test metrics mirroring the legacy
-:func:`cliffordstf.training.evaluate.evaluate_epoch`. The Module
-accumulates per-batch predictions and, at the end of each
-validation / test epoch, logs ``val_energy_mae`` / ``val_force_mae``
-/ ``val_force_cos`` / ``val_efwt`` (plus the corresponding ``test_*``
-keys). ``runtime_stats`` is threaded through so scalar tasks rescale
-energy MAE to physical units the same way the legacy trainer does.
-"""
+"""PyTorch Lightning wrapper around any cliffordstf-compatible model."""
 
 from __future__ import annotations
 
@@ -149,14 +125,18 @@ class CliffordSTFLightningModule(pl.LightningModule):
 
 def _new_accumulator(cfg: DictConfig) -> _MetricAccumulator:
     task_type = (
-        cfg.dataset.get("task_type", "energy_forces") if "dataset" in cfg else "energy_forces"
+        cfg.dataset.get("task_type", "energy_forces")
+        if "dataset" in cfg
+        else "energy_forces"
     )
     if task_type in SCALAR_TASK_TYPES:
         return ScalarMetricAccumulator()
     return EnergyForcesMetricAccumulator()
 
 
-def _apply_update(accumulator: _MetricAccumulator, payload: dict[str, torch.Tensor]) -> None:
+def _apply_update(
+    accumulator: _MetricAccumulator, payload: dict[str, torch.Tensor]
+) -> None:
     if isinstance(accumulator, ScalarMetricAccumulator):
         accumulator.update(payload["energy_pred"], payload["energy_target"])
     else:
@@ -176,7 +156,9 @@ def _forward_loss_and_predictions(
     loss_type = cfg.training.get("loss", "mse")
     loss_fn = mse_loss if loss_type == "mse" else l1_loss
     task_type = (
-        cfg.dataset.get("task_type", "energy_forces") if "dataset" in cfg else "energy_forces"
+        cfg.dataset.get("task_type", "energy_forces")
+        if "dataset" in cfg
+        else "energy_forces"
     )
 
     if task_type in SCALAR_TASK_TYPES:
@@ -211,7 +193,9 @@ def _forward_loss_and_predictions(
 
     energy_weight = float(cfg.dataset.get("energy_weight", 1.0))
     force_weight = float(cfg.dataset.get("force_weight", 1.0))
-    loss = energy_weight * loss_fn(energy_pred, energy_target) + force_weight * loss_fn(fp, ft)
+    loss = energy_weight * loss_fn(energy_pred, energy_target) + force_weight * loss_fn(
+        fp, ft
+    )
 
     return loss, {
         "energy_pred": energy_pred,
@@ -219,7 +203,8 @@ def _forward_loss_and_predictions(
         "forces_pred": fp,
         "forces_target": ft,
         "batch": batch.batch[get_free_atom_mask(batch)]
-        if cfg.dataset.get("eval_on_free_atoms", False) and get_free_atom_mask(batch) is not None
+        if cfg.dataset.get("eval_on_free_atoms", False)
+        and get_free_atom_mask(batch) is not None
         else batch.batch,
     }
 

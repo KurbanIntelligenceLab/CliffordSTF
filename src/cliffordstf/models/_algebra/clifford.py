@@ -1,18 +1,4 @@
-"""Clifford algebra primitives for equivariant neural networks.
-
-Signature-parameterized via `GeometricAlgebra`.
-
-Behaviour:
-  - `CliffordAlgebra(GeometricAlgebra((3,0)))` keeps the Cl(3,0) geometric
-    product as a single einsum kernel for bit-exact behaviour.
-  - Other signatures dispatch to einsum on `algebra.cayley`.
-  - `CliffordLinear`, `CliffordNorm`, `CliffordGateActivation` read grade
-    ranges, max_grade, and grade_dims from the algebra rather than relying on
-    module-level Cl(3,0) constants.
-
-Memory layout (Cl(3,0) default): [s, e1, e2, e3, e12, e13, e23, e123]
-        index:                     0   1   2   3    4    5    6     7
-"""
+"""Clifford algebra primitives for equivariant neural networks."""
 
 from __future__ import annotations
 
@@ -23,11 +9,6 @@ import torch.nn as nn
 
 from cliffordstf.models._algebra.geometric_algebra import GeometricAlgebra
 
-# ============================================================
-# Backward-compat module-level constants for Cl(3,0) callers
-# (clifford_stf and the equivariance test helper below).
-# New code should derive these from a GeometricAlgebra instance instead.
-# ============================================================
 
 DIM = 8
 N_GRADES = 4
@@ -35,12 +16,10 @@ GRADE_RANGES: dict[int, tuple[int, int]] = {0: (0, 1), 1: (1, 4), 2: (4, 7), 3: 
 GRADE_DIMS: dict[int, int] = {0: 1, 1: 3, 2: 3, 3: 1}
 ALL_GRADES: tuple[int, ...] = (0, 1, 2, 3)
 
-# Basis-blade indices for Cl(3,0): [s, e1, e2, e3, e12, e13, e23, e123]
+
 S, E1, E2, E3, E12, E13, E23, E123 = range(8)
 
 
-# Cached default algebra for backward-compat callers that don't pass one.
-# Lazily constructed to avoid any import-time ordering issues.
 _DEFAULT_ALGEBRA: GeometricAlgebra | None = None
 
 
@@ -51,14 +30,6 @@ def _get_default_algebra() -> GeometricAlgebra:
     return _DEFAULT_ALGEBRA
 
 
-# ============================================================
-# Grade bookkeeping helpers (signature-independent)
-# ============================================================
-
-
-# Lookup: GP(grade_a, grade_b) -> set of output grades (Cl(3,0) conventions;
-# matches general (p,q) signatures because |a-b| <= out <= a+b with step 2,
-# capped at p+q).
 GP_GRADE_TABLE: dict[tuple[int, int], set[int]] = {
     (0, 0): {0},
     (0, 1): {1},
@@ -95,17 +66,7 @@ def compute_layer_grades(
     edge_grades: tuple[int, ...] = (0, 1),
     max_grade: int = 3,
 ) -> list[tuple[int, ...]]:
-    """Progressive grade activation schedule.
-
-    Args:
-        n_layers: Number of interaction layers to schedule.
-        edge_grades: Grades carried on edges (defaults to scalar + vector).
-        max_grade: Cap on the highest grade to activate. ``1`` = scalar+vector
-            only (L=1), ``3`` = full Cl(3,0) (default).
-
-    Returns:
-        List of ``n_layers`` grade tuples, one per layer.
-    """
+    """Progressive grade activation schedule."""
     node_grades: tuple[int, ...] = (0,)
     layer_grades: list[tuple[int, ...]] = []
     for _ in range(n_layers):
@@ -116,18 +77,8 @@ def compute_layer_grades(
     return layer_grades
 
 
-# ============================================================
-# Core algebra - wraps GeometricAlgebra, Cl(3,0) fast-path
-# ============================================================
-
-
 class CliffordAlgebra(nn.Module):
-    """Clifford algebra wrapper holding a GeometricAlgebra instance.
-
-    For ``signature=(3,0)`` the geometric product is a single einsum kernel.
-    All other signatures dispatch to the same einsum path on
-    ``algebra.cayley``.
-    """
+    """Clifford algebra wrapper holding a GeometricAlgebra instance."""
 
     def __init__(self, algebra: GeometricAlgebra | None = None) -> None:
         super().__init__()
@@ -138,13 +89,12 @@ class CliffordAlgebra(nn.Module):
         self._is_cl30 = algebra.signature == (3, 0)
 
     def geometric_product(self, a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
-        """Full GP: a * b. ``(..., dim) x (..., dim) -> (..., dim)``.
-
-        Single einsum with the algebra's precomputed Cayley tensor.
-        """
+        """Full GP: a * b. ``(..., dim) x (..., dim) -> (..., dim)``."""
         return torch.einsum("...i,...j,ijk->...k", a, b, self.algebra.cayley)
 
-    def gp_scalar_times_mv(self, scalar_mv: torch.Tensor, mv: torch.Tensor) -> torch.Tensor:
+    def gp_scalar_times_mv(
+        self, scalar_mv: torch.Tensor, mv: torch.Tensor
+    ) -> torch.Tensor:
         s0, e0 = self.algebra.grade_ranges[0]
         return scalar_mv[..., s0:e0] * mv
 
@@ -161,7 +111,9 @@ class CliffordAlgebra(nn.Module):
             return self.gp_scalar_times_mv(b, a)
         return self.geometric_product(a, b)
 
-    def geometric_product_reference(self, a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+    def geometric_product_reference(
+        self, a: torch.Tensor, b: torch.Tensor
+    ) -> torch.Tensor:
         return torch.einsum("...i,...j,ijk->...k", a, b, self.algebra.cayley)
 
     def sandwich_product(self, x: torch.Tensor, r: torch.Tensor) -> torch.Tensor:
@@ -191,22 +143,14 @@ class CliffordAlgebra(nn.Module):
                 out.append(torch.sqrt(torch.sum(part**2, dim=-1, keepdim=True) + eps))
         return torch.cat(out, dim=-1)
 
-    def rotor_from_bivector(self, bv: torch.Tensor, angle: torch.Tensor) -> torch.Tensor:
+    def rotor_from_bivector(
+        self, bv: torch.Tensor, angle: torch.Tensor
+    ) -> torch.Tensor:
         return self.algebra.rotor_from_bivector(bv, angle)
 
 
-# ============================================================
-# L=2 feature augmentation (Cl(3,0) shim)
-# ============================================================
-
-
 def compute_l2_features(direction: torch.Tensor) -> torch.Tensor:
-    """Cl(3,0) backward-compat shim.
-
-    Returns the 5 L=2 symmetric-traceless components of ``d (outer) d`` for a
-    unit direction in 3D. Prefer ``GeometricAlgebra.compute_l2_features`` in
-    new code.
-    """
+    """Cl(3,0) backward-compat shim."""
     dx, dy, dz = direction.unbind(-1)
     third = 1.0 / 3.0
     return torch.stack(
@@ -215,12 +159,9 @@ def compute_l2_features(direction: torch.Tensor) -> torch.Tensor:
     )
 
 
-# ============================================================
-# Multivector construction (signature-aware)
-# ============================================================
-
-
-def make_scalar_mv(s: torch.Tensor, algebra: GeometricAlgebra | None = None) -> torch.Tensor:
+def make_scalar_mv(
+    s: torch.Tensor, algebra: GeometricAlgebra | None = None
+) -> torch.Tensor:
     """``(*, C)`` scalar -> ``(*, C, algebra.dim)`` with only grade-0 populated."""
     alg = algebra if algebra is not None else _get_default_algebra()
     out = s.new_zeros(*s.shape, alg.dim)
@@ -229,7 +170,9 @@ def make_scalar_mv(s: torch.Tensor, algebra: GeometricAlgebra | None = None) -> 
     return out
 
 
-def make_vec_mv(v: torch.Tensor, algebra: GeometricAlgebra | None = None) -> torch.Tensor:
+def make_vec_mv(
+    v: torch.Tensor, algebra: GeometricAlgebra | None = None
+) -> torch.Tensor:
     """``(*, C, grade_dims[1])`` vector -> ``(*, C, algebra.dim)`` grade-1 only."""
     alg = algebra if algebra is not None else _get_default_algebra()
     out = v.new_zeros(*v.shape[:-1], alg.dim)
@@ -253,13 +196,8 @@ def make_grades01_mv(
     return out
 
 
-# ============================================================
-# Grade-aware neural network layers (signature-aware)
-# ============================================================
-
-
 class CliffordLinear(nn.Module):
-    """Grade-preserving linear map. One weight matrix per active grade."""
+    """Grade-preserving linear map."""
 
     def __init__(
         self,
@@ -348,7 +286,9 @@ class CliffordNorm(nn.Module):
                 slices.append(scale * (x - mean) / std)
             else:
                 ch_norm_sq = torch.sum(x**2, dim=-1, keepdim=True)
-                rms = torch.sqrt(torch.mean(ch_norm_sq, dim=-2, keepdim=True) + self.eps)
+                rms = torch.sqrt(
+                    torch.mean(ch_norm_sq, dim=-2, keepdim=True) + self.eps
+                )
                 slices.append(scale * x / rms)
         return torch.cat(slices, dim=-1)
 
@@ -399,11 +339,6 @@ class CliffordGateActivation(nn.Module):
         return torch.cat(slices, dim=-1)
 
 
-# ============================================================
-# Backward-compat: Cl(3,0) equivariance smoke check
-# ============================================================
-
-
 def test_equivariance(
     model_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] | None = None,
     n_atoms: int = 5,
@@ -411,11 +346,7 @@ def test_equivariance(
     atol: float = 1e-5,
     seed: int = 42,
 ) -> dict[str, float | bool]:
-    """Numerically verify O(3) equivariance (Cl(3,0) backward-compat shim).
-
-    Not a pytest test - this is a hand-rolled equivariance checker that
-    ``clifford_stf`` re-exports as ``test_clifford_equivariance``.
-    """
+    """Numerically verify SO(3) equivariance."""
     torch.manual_seed(seed)
     alg = CliffordAlgebra()
 
@@ -455,6 +386,4 @@ def test_equivariance(
     return results
 
 
-# Tell pytest not to auto-collect this as a test: the `test_` prefix is
-# preserved for the historical re-export as `test_clifford_equivariance`.
 test_equivariance.__test__ = False  # type: ignore[attr-defined]

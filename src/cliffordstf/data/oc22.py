@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 def _build_oc22(cfg: DictConfig, *, task: str) -> list[LoaderSet]:
-    from cliffordstf.data import LoaderSet  # local import: break circular dep
+    from cliffordstf.data import LoaderSet
 
     ds_cfg = cfg.dataset
     max_train = ds_cfg.get("max_train_samples", None)

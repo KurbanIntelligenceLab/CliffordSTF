@@ -1,21 +1,4 @@
-"""Lightning :class:`Callback` writing the legacy checkpoint format.
-
-Phase 2 Step 21. The legacy trainer writes two files per fold under
-``<output_root>/.../models/``:
-
-* ``ckpt_last.pth``     — most recent epoch, for resume.
-* ``ckpt_best_val.pth`` — snapshot at the lowest ``val_loss`` so far.
-
-Both files share the schema documented in
-:func:`cliffordstf.training.checkpointing.save_checkpoint`. This
-callback writes the same files when running under the Lightning
-trainer so checkpoints stay interchangeable across the two paths.
-
-Writes are dispatched to the shared background-thread executor in
-:mod:`cliffordstf.training.checkpointing`, and the callback drains
-the queue via :func:`wait_for_checkpoint` from ``on_fit_end`` and
-``on_exception``.
-"""
+"""Lightning :class:`Callback` writing the legacy checkpoint format."""
 
 from __future__ import annotations
 
@@ -55,7 +38,9 @@ class LegacyCheckpointCallback(pl.Callback):
     ) -> None:
         optimizer = trainer.optimizers[0] if trainer.optimizers else None
         scheduler = (
-            trainer.lr_scheduler_configs[0].scheduler if trainer.lr_scheduler_configs else None
+            trainer.lr_scheduler_configs[0].scheduler
+            if trainer.lr_scheduler_configs
+            else None
         )
         save_checkpoint(
             path=path,
@@ -68,7 +53,9 @@ class LegacyCheckpointCallback(pl.Callback):
             training_state={"best_val": self.best_val, "best_epoch": self.best_epoch},
         )
 
-    def on_train_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
+    def on_train_epoch_end(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
         self._save(
             self.model_dir / "ckpt_last.pth",
             pl_module,
@@ -99,7 +86,10 @@ class LegacyCheckpointCallback(pl.Callback):
         wait_for_checkpoint()
 
     def on_exception(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule, exception: BaseException
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
+        exception: BaseException,
     ) -> None:
         wait_for_checkpoint()
 

@@ -1,15 +1,4 @@
-"""CliffordSTF Message Passing - Dual-Track Architecture.
-
-Extends ``_algebra/interaction.py`` with:
-  - STF_2 / STF_3 tracks propagating as equivariant features through MP.
-  - Hodge dual force readout (grade-1 + *grade-2).
-  - Per-edge STF_2 force decomposition (L=2 (x) L=1 -> L=1).
-  - Environment-adaptive angular momentum routing.
-  - Cross-track coupling via equivariant bilinear products only.
-
-Backward compatible: ``stf_mode="none"`` + ``use_hodge_forces=False`` recovers
-the original Clifford model.
-"""
+"""CliffordSTF Message Passing - Dual-Track Architecture."""
 
 from __future__ import annotations
 
@@ -58,11 +47,7 @@ _logger = logging.getLogger(__name__)
 
 
 class CliffordSTFEdgeEmbedding(nn.Module):
-    """Edge features with equivariant L=2 STF_2 track.
-
-    Clifford track holds the original grade-(0, 1) multivectors. The STF_2 track
-    holds ``direction (x) direction`` as a proper L=2 equivariant feature.
-    """
+    """Edge features with equivariant L=2 STF_2 track."""
 
     def __init__(
         self,
@@ -109,7 +94,9 @@ class CliffordSTFEdgeEmbedding(nn.Module):
             l2 = compute_l2_features(direction)
             s_xx, s_xy, s_xz, s_yy, s_yz = l2.unbind(-1)
             s_zz = -s_xx - s_yy
-            l2_norm_sq = s_xx**2 + s_yy**2 + s_zz**2 + 2.0 * (s_xy**2 + s_xz**2 + s_yz**2)
+            l2_norm_sq = (
+                s_xx**2 + s_yy**2 + s_zz**2 + 2.0 * (s_xy**2 + s_xz**2 + s_yz**2)
+            )
             l2_norm = torch.sqrt(l2_norm_sq.unsqueeze(-1) + 1e-8)
             feat = torch.cat([rbf, l2_norm], dim=-1)
         else:
@@ -138,10 +125,7 @@ class CliffordSTFEdgeEmbedding(nn.Module):
 
 
 class CliffordSTFAtomEmbedding(nn.Module):
-    """Atomic numbers -> scalar-only augmented multivectors.
-
-    STF tracks initialised to small noise (not zeros) for gradient flow.
-    """
+    """Atomic numbers -> scalar-only augmented multivectors."""
 
     def __init__(
         self,
@@ -176,16 +160,7 @@ class CliffordSTFAtomEmbedding(nn.Module):
 
 
 class AdaptiveRouting(nn.Module):
-    """Per-atom angular momentum routing.
-
-    Modes:
-        ``"none"``: all atoms use full augmented features.
-        ``"static"``: atom-type lookup (H/C/N/O -> low, metals -> high).
-        ``"learned"``: MLP from invariant local descriptors.
-
-    Output: per-atom soft gate in ``[0, 1]`` for each STF track. Applied as a
-    multiplicative mask (``torch.compile``-friendly).
-    """
+    """Per-atom angular momentum routing."""
 
     def __init__(
         self,
@@ -197,7 +172,9 @@ class AdaptiveRouting(nn.Module):
         super().__init__()
         self.mode = mode
         self.stf_mode = stf_mode
-        self.n_tracks = 1 + (1 if stf_mode != "none" else 0) + (1 if stf_mode == "stf2+stf3" else 0)
+        self.n_tracks = (
+            1 + (1 if stf_mode != "none" else 0) + (1 if stf_mode == "stf2+stf3" else 0)
+        )
 
         if mode == "static":
             n_gates = self.n_tracks - 1
@@ -249,13 +226,7 @@ class AdaptiveRouting(nn.Module):
         edge_index: torch.Tensor,
         dist: torch.Tensor,
     ) -> torch.Tensor:
-        """Compute layer-independent portion of invariant descriptors.
-
-        These terms depend only on positions / edges / distances, not on the
-        per-layer features ``h``. Caching them and calling
-        :meth:`combine_with_g0` inside the interaction loop avoids recomputing
-        three scatter ops per layer.
-        """
+        """Compute layer-independent portion of invariant descriptors."""
         src, dst = edge_index
         n = pos.shape[0]
 
@@ -291,9 +262,9 @@ class AdaptiveRouting(nn.Module):
         h: torch.Tensor,
     ) -> torch.Tensor:
         """Append per-layer ``g0_norm`` to cached geometric invariants."""
-        g0_norm = torch.sqrt(torch.sum(h[..., 0] ** 2, dim=-1, keepdim=True) + 1e-8).mean(
-            dim=-1, keepdim=True
-        )
+        g0_norm = torch.sqrt(
+            torch.sum(h[..., 0] ** 2, dim=-1, keepdim=True) + 1e-8
+        ).mean(dim=-1, keepdim=True)
         return torch.cat([geometric_invariants, g0_norm], dim=-1)
 
     def compute_invariant_descriptors(
@@ -304,24 +275,13 @@ class AdaptiveRouting(nn.Module):
         h: torch.Tensor,
         batch_size: int,
     ) -> torch.Tensor:
-        """Compute per-atom invariant descriptors for learned routing.
-
-        Kept for backward compatibility. Prefer
-        :meth:`precompute_geometric_invariants` + :meth:`combine_with_g0` in
-        hot paths.
-        """
+        """Compute per-atom invariant descriptors for learned routing."""
         geom = self.precompute_geometric_invariants(pos, edge_index, dist)
         return self.combine_with_g0(geom, h)
 
 
 class CliffordSTFMessageFunction(nn.Module):
-    """Dual-track message with GP on Clifford + bilinear on STF tracks.
-
-    Clifford track is the original (GP dispatch + attention/gating). STF_2 track
-    is generated from grade-1 x edge direction (L=1 (x) L=1 -> L=2) and
-    propagated from sender STF_2 via scalar modulation. Cross-track contraction
-    STF_2 (x) grade-1 -> grade-1 feeds back into the Clifford message.
-    """
+    """Dual-track message with GP on Clifford + bilinear on STF tracks."""
 
     def __init__(
         self,
@@ -398,8 +358,12 @@ class CliffordSTFMessageFunction(nn.Module):
         edge_cl = edge_mv[..., :CL_DIM]
 
         e = self.pre_edge(edge_cl)
-        gp_he = self.alg.dispatch_gp(h_j_cl, e, self.node_input_grades, self.edge_grades)
-        gp_eh = self.alg.dispatch_gp(e, h_j_cl, self.edge_grades, self.node_input_grades)
+        gp_he = self.alg.dispatch_gp(
+            h_j_cl, e, self.node_input_grades, self.edge_grades
+        )
+        gp_eh = self.alg.dispatch_gp(
+            e, h_j_cl, self.edge_grades, self.node_input_grades
+        )
 
         skip_s = self.skip(h_j_cl[..., 0])
         skip_mv = make_scalar_mv(skip_s)
@@ -445,7 +409,9 @@ class CliffordSTFMessageFunction(nn.Module):
         rbf_w = self.stf2_radial(rbf_feats)
 
         s2_gen_proj = torch.einsum("oc,...ci->...oi", self.stf2_proj_gen.weight, s2_gen)
-        s2_send_proj = torch.einsum("oc,...ci->...oi", self.stf2_proj_sender.weight, h_j_s2)
+        s2_send_proj = torch.einsum(
+            "oc,...ci->...oi", self.stf2_proj_sender.weight, h_j_s2
+        )
         msg_s2 = (s2_gen_proj + s2_send_proj) * rbf_w.unsqueeze(-1)
 
         parts = [msg_cl, msg_s2]
@@ -454,8 +420,12 @@ class CliffordSTFMessageFunction(nn.Module):
             h_j_s3 = h_j[..., CL_DIM + STF2_DIM :]
 
             s3_gen = compute_stf3_product(h_j_s2, dir_exp)
-            s3_gen_proj = torch.einsum("oc,...ci->...oi", self.stf3_proj_gen.weight, s3_gen)
-            s3_send_proj = torch.einsum("oc,...ci->...oi", self.stf3_proj_sender.weight, h_j_s3)
+            s3_gen_proj = torch.einsum(
+                "oc,...ci->...oi", self.stf3_proj_gen.weight, s3_gen
+            )
+            s3_send_proj = torch.einsum(
+                "oc,...ci->...oi", self.stf3_proj_sender.weight, h_j_s3
+            )
             msg_s3 = (s3_gen_proj + s3_send_proj) * rbf_w.unsqueeze(-1)
             parts.append(msg_s3)
 
@@ -463,12 +433,7 @@ class CliffordSTFMessageFunction(nn.Module):
 
 
 class CliffordSTFMultiBodyInteraction(nn.Module):
-    """Multi-body with STF generation from iterated products.
-
-    2-body: ``W2 . agg``.
-    3-body: ``GP(agg, agg)`` on Clifford + STF_2 from grade-1 x grade-1.
-    4-body: ``GP(3body, agg)`` + STF_3 from STF_2 x grade-1.
-    """
+    """Multi-body with STF generation from iterated products."""
 
     def __init__(
         self,
@@ -515,14 +480,18 @@ class CliffordSTFMultiBodyInteraction(nn.Module):
                 three_body = three_body_cl
             else:
                 agg_cl = agg
-                three_body = self.alg.augmented_product(agg, agg, stf_mode=self.stf_mode)
+                three_body = self.alg.augmented_product(
+                    agg, agg, stf_mode=self.stf_mode
+                )
             out = out + self.w3(three_body)
 
             if self.max_body_order >= 4:
                 if self.stf_mode == "none":
                     four_body = self.alg.geometric_product(three_body, agg_cl)
                 else:
-                    four_body = self.alg.augmented_product(three_body, agg, stf_mode=self.stf_mode)
+                    four_body = self.alg.augmented_product(
+                        three_body, agg, stf_mode=self.stf_mode
+                    )
                 out = out + self.w4(four_body)
 
         return out
@@ -711,20 +680,7 @@ class CliffordSTFInteractionBlock(nn.Module):
 
 
 class CliffordSTFOutputBlock(nn.Module):
-    """Energy/force output with Hodge dual and STF_2 force decomposition.
-
-    Energy: grade-0 scalars + GP readout + STF_2 norm invariants + STF_3 norm
-    invariants.
-
-    Forces: grade-1 vectors + *grade-2 (Hodge dual) + per-edge STF_2 . r-hat
-    contraction.
-
-    If ``skip_clifford_output=True`` the Clifford-track contribution is removed
-    from both energy (no grade-0 scalars, no GP readout) and forces (no grade-1
-    vectors, no Hodge dual). Only STF invariants and the per-edge STF_2 force
-    decomposition drive the output. Requires ``stf_mode != 'none'`` because
-    otherwise the output head would have no inputs.
-    """
+    """Energy/force output with Hodge dual and STF_2 force decomposition."""
 
     def __init__(
         self,
@@ -754,7 +710,9 @@ class CliffordSTFOutputBlock(nn.Module):
             )
 
         energy_in = (
-            0 if skip_clifford_output else (2 * n_channels if use_gp_readout else n_channels)
+            0
+            if skip_clifford_output
+            else (2 * n_channels if use_gp_readout else n_channels)
         )
         if stf_mode != "none":
             energy_in += n_channels
@@ -862,15 +820,7 @@ class CliffordSTFOutputBlock(nn.Module):
 
 
 class CliffordSTF(nn.Module):
-    """CliffordSTF GNN - Cl(3,0) + STF_2 + STF_3.
-
-    Ablation flags:
-        ``stf_mode``: ``"none"`` / ``"stf2"`` / ``"stf2+stf3"``.
-        ``use_hodge_forces``: grade-1 + *grade-2 force readout.
-        ``use_adaptive_routing``: per-atom L_max selection.
-        ``routing_mode``: ``"none"`` / ``"static"`` / ``"learned"``.
-        ``use_cross_track``: Clifford <-> STF bilinear coupling.
-    """
+    """CliffordSTF GNN - Cl(3,0) + STF_2 + STF_3."""
 
     def __init__(
         self,
@@ -911,7 +861,9 @@ class CliffordSTF(nn.Module):
         self.routing_mode = routing_mode
         self.skip_clifford_output = skip_clifford_output
 
-        self.atom_embed = CliffordSTFAtomEmbedding(n_atom_types, n_channels, stf_mode=stf_mode)
+        self.atom_embed = CliffordSTFAtomEmbedding(
+            n_atom_types, n_channels, stf_mode=stf_mode
+        )
         self.edge_embed = CliffordSTFEdgeEmbedding(
             n_rbf, n_channels, cutoff, use_l2=use_l2, stf_mode=stf_mode
         )
@@ -942,7 +894,10 @@ class CliffordSTF(nn.Module):
 
         if use_multiscale:
             self.layer_readouts = nn.ModuleList(
-                [PerLayerEnergyReadout(n_channels, n_hidden_output) for _ in range(n_interactions)]
+                [
+                    PerLayerEnergyReadout(n_channels, n_hidden_output)
+                    for _ in range(n_interactions)
+                ]
             )
 
         self.output = CliffordSTFOutputBlock(
@@ -1008,10 +963,14 @@ class CliffordSTF(nn.Module):
 
             if self.use_multiscale:
                 layer_energies.append(
-                    self.layer_readouts[i](h[..., :CL_DIM], batch, num_graphs=num_graphs)
+                    self.layer_readouts[i](
+                        h[..., :CL_DIM], batch, num_graphs=num_graphs
+                    )
                 )
 
-        energy, forces = self.output(h, batch, edge_index, dist, direction, num_graphs=num_graphs)
+        energy, forces = self.output(
+            h, batch, edge_index, dist, direction, num_graphs=num_graphs
+        )
 
         if self.use_multiscale and layer_energies:
             for le in layer_energies:

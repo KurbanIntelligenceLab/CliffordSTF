@@ -1,21 +1,4 @@
-"""Validation / test loop dispatched by ``cfg.dataset.task_type``.
-
-Energy-forces returns four metrics:
-    ``energy_mae``: per-structure energy mean absolute error.
-    ``force_mae``: per-component force mean absolute error.
-    ``force_cos``: per-atom mean cosine similarity between predicted and
-        target force vectors.
-    ``efwt``: percentage of structures with energy error < 0.02 and per-atom
-        max force error < 0.03 (the FairChem "energy-and-forces-within-
-        threshold" metric).
-
-Scalar returns one metric:
-    ``energy_mae``: per-structure absolute error on the scalar target.
-
-When ``runtime_stats`` contains a ``"std"`` (and optional ``"mean"``), the
-reported ``energy_mae`` is multiplied by ``std`` so that QM9 / Molecule3D
-metrics are in the dataset's native (physical) units.
-"""
+"""Validation / test loop dispatched by ``cfg.dataset.task_type``."""
 
 from __future__ import annotations
 
@@ -57,7 +40,9 @@ def evaluate_epoch(
     return _evaluate_energy_forces(model, loader, cfg, device, amp_dtype, runtime_stats)
 
 
-def _rescale_energy_mae(mae: float, runtime_stats: Mapping[str, object] | None) -> float:
+def _rescale_energy_mae(
+    mae: float, runtime_stats: Mapping[str, object] | None
+) -> float:
     if runtime_stats is None:
         return mae
     std_raw = runtime_stats.get("std", None)
@@ -140,7 +125,9 @@ def _evaluate_energy_forces(
             energy_pred = out
             forces_pred = compute_forces(energy_pred, data.pos, create_graph=False)
 
-        energy_target = data.energy.view(-1) if hasattr(data, "energy") else data.y.view(-1)
+        energy_target = (
+            data.energy.view(-1) if hasattr(data, "energy") else data.y.view(-1)
+        )
         forces_target = data.force.to(forces_pred.dtype)
 
         free_mask = get_free_atom_mask(data) if eval_on_free else None
@@ -170,7 +157,10 @@ def _evaluate_energy_forces(
             scatter_max(per_atom_ferr, batch_free, dim=0, dim_size=n_graphs)[0],
         )
         total_efwt += (
-            ((energy_ae < EFWT_ENERGY_THRESHOLD) & (max_ferr_per_graph < EFWT_FORCE_THRESHOLD))
+            (
+                (energy_ae < EFWT_ENERGY_THRESHOLD)
+                & (max_ferr_per_graph < EFWT_FORCE_THRESHOLD)
+            )
             .sum()
             .double()
         )

@@ -1,27 +1,4 @@
-"""Lightning-backed training entrypoint (Phase 2 Step 19).
-
-Mirrors :func:`cliffordstf.training.trainer.train`'s contract so the
-same ``(cfg, loaders)`` pair can drive either the legacy loop or this
-Lightning :class:`pytorch_lightning.Trainer`-based path. The legacy
-entry stays usable; Step 22 wires the CLI to pick between the two.
-
-The Lightning trainer is configured with ``inference_mode=False`` so
-the autograd graph survives :meth:`validation_step` /
-:meth:`test_step` (force tasks read forces from ``-dE/dR``).
-
-EMA and the project's existing checkpoint format are handled in
-follow-up steps:
-
-* Step 20 — EMA :class:`Callback` translating
-  :class:`cliffordstf.training.ema.ExponentialMovingAverage`.
-* Step 21 — Checkpoint :class:`Callback` that writes the legacy
-  ``ckpt_last.pth`` / ``ckpt_best_val.pth`` format so Lightning and
-  legacy checkpoints stay interchangeable.
-
-Step 19 keeps the trainer minimal: an optional
-:class:`EarlyStopping` callback and Lightning's stock progress
-bar / logging. No custom callbacks yet.
-"""
+"""Lightning-backed training entrypoint (Phase 2 Step 19)."""
 
 from __future__ import annotations
 
@@ -70,16 +47,10 @@ def _resolve_precision(cfg: DictConfig, accelerator: str) -> _PrecisionLiteral:
     return "bf16-mixed" if dtype == "bfloat16" else "16-mixed"
 
 
-def _build_callbacks(cfg: DictConfig, model_dir: Path, logs_dir: Path) -> list[pl.Callback]:
-    """Build the default Lightning callback set.
-
-    Always installs :class:`EMACallback` (no-op when the wrapped model
-    does not expose the EMA contract), :class:`LegacyCheckpointCallback`
-    (writes ``ckpt_last.pth`` / ``ckpt_best_val.pth`` in the legacy
-    schema), and :class:`LegacyLogsCallback` (dumps per-epoch metric
-    history to ``logs.json`` at fit-end). Adds :class:`EarlyStopping`
-    when ``cfg.training.early_stopping.patience`` is positive.
-    """
+def _build_callbacks(
+    cfg: DictConfig, model_dir: Path, logs_dir: Path
+) -> list[pl.Callback]:
+    """Build the default Lightning callback set."""
     callbacks: list[pl.Callback] = [
         EMACallback(),
         LegacyCheckpointCallback(model_dir=model_dir),
@@ -107,37 +78,12 @@ def train_lightning(
     extra_parts: tuple[str, ...] = (),
     model_extras: Mapping[str, ModelFactory] | None = None,
 ) -> dict[str, Any]:
-    """Lightning-backed training entrypoint with the legacy ``train()`` contract.
-
-    Args:
-        cfg: Resolved config; reads ``cfg.training.{epochs,grad_clip,
-            grad_accum_steps,val_every,amp,amp_dtype,early_stopping}`` and
-            ``cfg.dataset.task_type`` (the latter via the wrapped
-            :class:`CliffordSTFLightningModule`).
-        loaders: Dict with required ``"train"`` / ``"val"`` keys and
-            optional ``"test"``.
-        runtime_stats: Forwarded for parity with the legacy trainer.
-            Reserved for Step 21's metric-aware callbacks; currently
-            unused by Step 19.
-        extra_parts: Path segments appended to
-            :func:`build_output_dirs` so per-fold runs do not collide.
-        model_extras: Optional plug-in catalog passed through to
-            :func:`cliffordstf.models.build_model` (mirrors the legacy
-            trainer's ``model_extras`` kwarg).
-
-    Returns:
-        Dict containing the resolved output directory and any tracked
-        metrics. Shape will grow as Steps 20-22 land.
-    """
+    """Lightning-backed training entrypoint with the legacy ``train()`` contract."""
     SeedManager.set_global_seed(cfg.seed)
     base_dir, model_dir, logs_dir = build_output_dirs(cfg, extra_parts)
 
     raw_model = build_model(cfg.model.name, cfg, extras=model_extras)
 
-    # Auto-resume: if a legacy-format ckpt_last.pth exists under model_dir,
-    # restore model weights before wrapping in the LightningModule. Lightning
-    # starts fresh optimizer / scheduler state - documented limitation; the
-    # bulk of restart-correctness comes from model weight continuity.
     resume_path = model_dir / "ckpt_last.pth"
     resumed_from: str | None = None
     if resume_path.is_file():

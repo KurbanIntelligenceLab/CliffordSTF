@@ -1,6 +1,3 @@
-# CliffordSTF-Full ~1.06M config
-# STF₂+STF₃ (20D) + Hodge dual forces + learned adaptive routing + cross-track
-# Best force cosine among all STF ablation variants (+20.5% vs baseline)
 model:
   name: clifford_stf_full
   interface: data_wrapper
@@ -17,9 +14,6 @@ model:
   use_adaptive_routing: true
   routing_mode: "learned"
   use_cross_track: true
-  # Disabled based on ablation
   use_self_interaction: false
   use_gp_readout: false
-  # torch.compile blocked by torch_scatter FX-trace incompat + dynamic shapes
-  # (retry when PyTorch/torch_scatter ships opaque custom-op registration)
   use_compile: false

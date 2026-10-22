@@ -1,15 +1,4 @@
-"""Per-batch metric accumulators for the Lightning validation/test loops.
-
-Mirrors the aggregation logic of
-:func:`cliffordstf.training.evaluate.evaluate_epoch` so the Lightning
-path reports the same scientific metrics:
-
-* Scalar tasks (``cfg.dataset.task_type in SCALAR_TASK_TYPES``):
-  ``energy_mae`` (rescaled by ``runtime_stats["std"]`` when provided).
-* Energy-forces tasks: ``energy_mae``, ``force_mae``, ``force_cos``,
-  ``efwt`` (percentage of structures with energy err < 0.02 and per-atom
-  max force err < 0.03).
-"""
+"""Per-batch metric accumulators for the Lightning validation/test loops."""
 
 from __future__ import annotations
 
@@ -36,15 +25,18 @@ class ScalarMetricAccumulator:
         self.n_structures = 0
 
     def update(self, energy_pred: torch.Tensor, energy_target: torch.Tensor) -> None:
-        self.total_energy_ae = self.total_energy_ae.to(energy_pred.device) + (
-            energy_pred - energy_target
-        ).abs().sum().double()
+        self.total_energy_ae = (
+            self.total_energy_ae.to(energy_pred.device)
+            + (energy_pred - energy_target).abs().sum().double()
+        )
         self.n_structures += energy_pred.size(0)
 
     def finalize(self, runtime_stats: Mapping[str, object] | None) -> dict[str, float]:
         n = max(1, self.n_structures)
         return {
-            "energy_mae": _rescale_energy_mae(self.total_energy_ae.item() / n, runtime_stats),
+            "energy_mae": _rescale_energy_mae(
+                self.total_energy_ae.item() / n, runtime_stats
+            ),
         }
 
 
@@ -91,7 +83,10 @@ class EnergyForcesMetricAccumulator:
             scatter_max(per_atom_ferr, batch, dim=0, dim_size=n_graphs)[0],
         )
         self.total_efwt += (
-            ((energy_ae < EFWT_ENERGY_THRESHOLD) & (max_ferr_per_graph < EFWT_FORCE_THRESHOLD))
+            (
+                (energy_ae < EFWT_ENERGY_THRESHOLD)
+                & (max_ferr_per_graph < EFWT_FORCE_THRESHOLD)
+            )
             .sum()
             .double()
         )
@@ -102,7 +97,9 @@ class EnergyForcesMetricAccumulator:
         nf = max(1, self.n_force_components)
         na = max(1, self.n_force_atoms)
         return {
-            "energy_mae": _rescale_energy_mae(self.total_energy_ae.item() / n, runtime_stats),
+            "energy_mae": _rescale_energy_mae(
+                self.total_energy_ae.item() / n, runtime_stats
+            ),
             "force_mae": self.total_force_ae.item() / nf,
             "force_cos": self.total_cos_sim.item() / na,
             "efwt": self.total_efwt.item() / n * 100.0,

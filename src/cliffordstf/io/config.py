@@ -1,21 +1,4 @@
-"""OmegaConf-based config loader.
-
-Merge chain (later overrides earlier):
-    1. ``<pkg>/configs/base.yaml``        — global defaults
-    2. ``<pkg>/configs/dataset/{name}.yaml`` — dataset-specific defaults
-    3. ``<pkg>/configs/model/{name}.yaml`` — model architecture defaults
-    4. ``--config <path.yaml>``           — optional user override file
-    5. CLI dot-overrides                   — e.g. ``training.lr=1e-3``
-
-Design notes:
-
-- The packaged ``cliffordstf/configs/`` directory is the default config
-  root (resolved relative to this module so editable installs and built
-  wheels both work).
-- Callers may pass ``extra_search_paths`` so the optional ``baselines``
-  package can plug its own ``configs/`` directory into the lookup
-  without using a global registry (Amendment 1).
-"""
+"""OmegaConf-based config loader."""
 
 from __future__ import annotations
 
@@ -55,25 +38,16 @@ def load_config(
     defaults: dict[str, object] | None = None,
     extra_search_paths: Sequence[Path] | None = None,
 ) -> DictConfig:
-    """Build a merged ``DictConfig`` from packaged YAMLs and CLI argv.
-
-    Args:
-        argv: CLI arguments. ``None`` falls back to ``sys.argv[1:]``.
-        defaults: Hard-coded defaults merged after ``base.yaml`` and
-            before ``dataset.yaml`` (useful for trainers that pre-pin
-            ``dataset.name``).
-        extra_search_paths: Additional config roots searched after
-            ``DEFAULT_CONFIGS_DIR``. Used to plug in ``baselines``-style
-            third-party config directories.
-
-    Returns:
-        The merged ``DictConfig`` with interpolations resolved.
-    """
+    """Build a merged ``DictConfig`` from packaged YAMLs and CLI argv."""
     if argv is None:
         argv = sys.argv[1:]
 
     override_yaml_path, dot_overrides = _split_argv(argv)
-    cli_conf = OmegaConf.from_dotlist(list(dot_overrides)) if dot_overrides else OmegaConf.create()
+    cli_conf = (
+        OmegaConf.from_dotlist(list(dot_overrides))
+        if dot_overrides
+        else OmegaConf.create()
+    )
     defaults_conf = OmegaConf.create(defaults) if defaults else OmegaConf.create()
 
     search_paths: list[Path] = [DEFAULT_CONFIGS_DIR]
@@ -88,7 +62,9 @@ def load_config(
     dataset_conf = _maybe_load(peek, "dataset.name", "dataset", search_paths)
     model_conf = _maybe_load(peek, "model.name", "model", search_paths)
 
-    override_conf = OmegaConf.load(override_yaml_path) if override_yaml_path else OmegaConf.create()
+    override_conf = (
+        OmegaConf.load(override_yaml_path) if override_yaml_path else OmegaConf.create()
+    )
 
     cfg = OmegaConf.merge(
         base_conf, defaults_conf, dataset_conf, model_conf, override_conf, cli_conf

@@ -1,8 +1,4 @@
-"""Shared domain types used by ``cliffordstf`` modules and external plug-ins.
-
-Anything imported by two or more modules lives here per
-``CODING_RULES.md`` §C.4.
-"""
+"""Shared domain types used by ``cliffordstf`` modules and external plug-ins."""
 
 from __future__ import annotations
 
@@ -22,11 +18,7 @@ ModelFactory = Callable[["DictConfig"], "nn.Module"]
 """A callable that turns a resolved Hydra config into an ``nn.Module``."""
 
 DatasetFactory = Callable[["DictConfig"], "list[LoaderSet]"]
-"""A callable that turns a resolved config into a list of ``LoaderSet``.
-
-A factory returns one ``LoaderSet`` per training fold (single-element
-list for non-cross-validated datasets, multi-element for k-fold).
-"""
+"""A callable that turns a resolved config into a list of ``LoaderSet``."""
 
 
 @dataclass(frozen=True, slots=True)

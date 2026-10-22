@@ -1,12 +1,4 @@
-"""Seed management and provenance writing.
-
-Per ``CODING_RULES.md`` §E:
-
-- ``SeedManager.set_global_seed`` is called exactly once at every entrypoint
-  before any random / numpy / torch / CUDA call.
-- ``ProvenanceWriter`` writes a sibling ``<artifact>.meta.json`` for every
-  artifact under ``outputs/``.
-"""
+"""Seed management and provenance writing."""
 
 from __future__ import annotations
 
@@ -37,13 +29,7 @@ class SeedManager:
 
     @classmethod
     def set_global_seed(cls, seed: int) -> SeedManager:
-        """Seed every supported RNG and return a record of what was set.
-
-        Call this exactly once per entrypoint, before any random sampling,
-        dataset loading, or model construction. Exact bit-for-bit
-        reproducibility is not guaranteed across PyTorch / CUDA / cuDNN
-        releases (``CODING_RULES.md`` §E.1).
-        """
+        """Seed every supported RNG and return a record of what was set."""
         os.environ["PYTHONHASHSEED"] = str(seed)
         random.seed(seed)
         np.random.seed(seed)
@@ -92,8 +78,12 @@ class ProvenanceWriter:
             "git_dirty": _git_dirty(),
             "config_hash": "sha256:" + hashlib.sha256(config_yaml.encode()).hexdigest(),
             "config_path": str(self._config_path),
-            "dataset_manifest": str(self._dataset_manifest) if self._dataset_manifest else None,
-            "split_manifest": str(self._split_manifest) if self._split_manifest else None,
+            "dataset_manifest": str(self._dataset_manifest)
+            if self._dataset_manifest
+            else None,
+            "split_manifest": str(self._split_manifest)
+            if self._split_manifest
+            else None,
             "seed": self._seed,
             "python_version": platform.python_version(),
             "package_version": self._package_version,

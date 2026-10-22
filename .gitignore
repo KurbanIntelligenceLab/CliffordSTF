@@ -25,6 +25,17 @@ data/cache/
 .idea/
 .vscode/
 
+# Local material
+/dd_template/
+/new_template/
+/development/
+/manuscript_work/
+/reproduction/
+/rebuttal/
+/baselines/
+/figures/
+/output/
+
 # LaTeX
 *.aux
 *.bbl
@@ -33,7 +44,3 @@ data/cache/
 *.fls
 *.log
 *.out
-/dd_template/main.pdf
-/dd_template/esi.pdf
-
-/dd_template/.crossrefs/

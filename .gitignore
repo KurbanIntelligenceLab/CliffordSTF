@@ -8,7 +8,6 @@ __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
-.mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
@@ -18,7 +17,6 @@ dist/
 build/
 *.egg-info/
 
-# experiment outputs (CODING_RULES.md §D)
 outputs/
 data/raw/
 data/cache/
@@ -26,3 +24,16 @@ data/cache/
 # IDE
 .idea/
 .vscode/
+
+# LaTeX
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+/dd_template/main.pdf
+/dd_template/esi.pdf
+
+/dd_template/.crossrefs/

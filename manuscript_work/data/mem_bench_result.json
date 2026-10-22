@@ -1,0 +1,28 @@
+{
+  "device": "cuda",
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "torch": "2.4.1+cu124",
+  "batch_size": 32,
+  "atoms_per_batch": 672,
+  "edges_per_batch": 11456,
+  "models": {
+    "Clifford (base)": {
+      "n_params": 1385526,
+      "inference": {
+        "peak_mem_MiB": 407.7548828125
+      },
+      "training": {
+        "peak_mem_MiB": 1962.16796875
+      }
+    },
+    "CliffordSTF (full)": {
+      "n_params": 1056534,
+      "inference": {
+        "peak_mem_MiB": 491.056640625
+      },
+      "training": {
+        "peak_mem_MiB": 2596.19873046875
+      }
+    }
+  }
+}

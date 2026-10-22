@@ -1,18 +1,4 @@
-"""Signature-parameterized geometric algebra Cl(p, q).
-
-One `GeometricAlgebra` instance owns everything signature-dependent:
-- Multivector dimension (2^(p+q))
-- Grade ranges (contiguous index blocks per grade)
-- Cayley table (dim, dim, dim) of plus/minus 1 structure constants
-- Reversion signs per grade
-- Grade projection, geometric product, reverse, sandwich, rotor-from-bivector
-- L=2 feature formula (branches by n_basis)
-- Direction embedding (branches by signature and mode)
-
-Cl(3,0) retains the existing unrolled fast-path in ``clifford.py`` via a
-dispatch in `geometric_product` so callers get bit-exact behaviour on the
-hot path. Other signatures use einsum on the Cayley table.
-"""
+"""Signature-parameterized geometric algebra Cl(p, q)."""
 
 from __future__ import annotations
 
@@ -30,11 +16,7 @@ def _blade_bitmasks_by_grade(n: int) -> list[int]:
 
 
 def _blade_product(bits_a: int, bits_b: int, p: int) -> tuple[int, int]:
-    """Multiply two basis blades. Returns (result_bits, sign in {-1, +1}).
-
-    Sign = permutation_parity * product(metric[i] for i in A intersect B),
-    where metric[i] = +1 if i < p else -1.
-    """
+    """Multiply two basis blades."""
     gens_a = [i for i in range(32) if bits_a & (1 << i)]
     gens_b = [i for i in range(32) if bits_b & (1 << i)]
     gens = gens_a + gens_b
@@ -123,11 +105,7 @@ class GeometricAlgebra(nn.Module):
         return [self.slice_grade(mv, k) for k in range(self.max_grade + 1)]
 
     def geometric_product(self, a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
-        """General GP via einsum.
-
-        Cl(3,0) call sites use the unrolled fast path in
-        ``clifford.CliffordAlgebra`` directly (bit-exact regression).
-        """
+        """General GP via einsum."""
         return torch.einsum("...i,...j,ijk->...k", a, b, self.cayley)
 
     def reverse(self, mv: torch.Tensor) -> torch.Tensor:
@@ -136,8 +114,10 @@ class GeometricAlgebra(nn.Module):
     def sandwich_product(self, x: torch.Tensor, r: torch.Tensor) -> torch.Tensor:
         return self.geometric_product(self.geometric_product(r, x), self.reverse(r))
 
-    def rotor_from_bivector(self, bv: torch.Tensor, angle: torch.Tensor) -> torch.Tensor:
-        """bv: (..., grade_dims[2]); angle: (..., 1). Returns (..., dim)."""
+    def rotor_from_bivector(
+        self, bv: torch.Tensor, angle: torch.Tensor
+    ) -> torch.Tensor:
+        """bv: (..., grade_dims[2]); angle: (..., 1)."""
         half = angle * 0.5
         rotor = torch.zeros(*bv.shape[:-1], self.dim, device=bv.device, dtype=bv.dtype)
         s0, e0 = self.grade_ranges[0]
@@ -151,13 +131,7 @@ class GeometricAlgebra(nn.Module):
         r_3d: torch.Tensor,
         mode: Literal["spatial", "spatial_plus_distance"],
     ) -> torch.Tensor:
-        """r_3d: (..., 3). Returns (..., dim) with only grade-1 populated.
-
-        Cl(2,0) uses (x, y)          (caller must project beforehand).
-        Cl(3,0) uses (x, y, z).
-        Cl(3,1) spatial            -> (x, y, z, 0).
-        Cl(3,1) spatial_plus_distance -> (x, y, z, |r|).
-        """
+        """r_3d: (..., 3)."""
         out = r_3d.new_zeros(*r_3d.shape[:-1], self.dim)
         s, _ = self.grade_ranges[1]
         g1_dim = self.grade_dims[1]
@@ -172,17 +146,13 @@ class GeometricAlgebra(nn.Module):
                 out[..., s + 3] = torch.linalg.norm(r_3d, dim=-1)
         else:
             raise NotImplementedError(f"embed_direction for {self.signature}")
-        assert g1_dim == (2 if self.signature == (2, 0) else (3 if self.signature == (3, 0) else 4))
+        assert g1_dim == (
+            2 if self.signature == (2, 0) else (3 if self.signature == (3, 0) else 4)
+        )
         return out
 
     def compute_l2_features(self, direction: torch.Tensor) -> torch.Tensor:
-        """L=2 symmetric-traceless components of d (outer) d.
-
-        Cl(2,0):  3 components [d_x^2 - 1/2, d_x d_y, d_y^2 - 1/2]. Frobenius
-                  norm of this is 1/2 for any unit direction (degenerate signal).
-        Cl(3,0)/Cl(3,1): 5 components
-                  [d_x^2 - 1/3, d_x d_y, d_x d_z, d_y^2 - 1/3, d_y d_z].
-        """
+        """L=2 symmetric-traceless components of d (outer) d."""
         if self.signature == (2, 0):
             dx, dy = direction[..., 0], direction[..., 1]
             half = 0.5
@@ -195,12 +165,7 @@ class GeometricAlgebra(nn.Module):
         )
 
     def l2_frobenius_norm_sq(self, l2_feat: torch.Tensor) -> torch.Tensor:
-        """||S||^2 for the symmetric-traceless tensor corresponding to `l2_feat`.
-
-        Cl(2,0): 2 * (a^2 + b^2) where feat = [a, b, -a]  (trace-free 2D, S_yy = -S_xx)
-        Cl(3,0)/Cl(3,1): S_zz = -S_xx - S_yy;
-        ||S||^2 = S_xx^2 + S_yy^2 + S_zz^2 + 2 (S_xy^2 + S_xz^2 + S_yz^2).
-        """
+        """||S||^2 for the symmetric-traceless tensor corresponding to `l2_feat`."""
         if self.signature == (2, 0):
             s_xx, s_xy, s_yy = l2_feat.unbind(-1)
             return 2.0 * (s_xx**2 + s_xy**2)

@@ -1,13 +1,4 @@
-"""Lightning :class:`Callback` writing ``logs.json`` in the legacy schema.
-
-Phase 2 Step 25. The legacy trainer dumps a per-fold ``logs.json`` via
-:func:`cliffordstf.training.checkpointing.save_logs`. This callback
-mirrors that contract for the Lightning path: it snapshots
-``trainer.callback_metrics`` at the end of every validation epoch,
-appends one record per epoch to an in-memory ``history`` list, and
-writes the whole thing to ``logs_dir / "logs.json"`` at fit-end via
-the same :func:`save_logs` helper.
-"""
+"""Lightning :class:`Callback` writing ``logs.json`` in the legacy schema."""
 
 from __future__ import annotations
 

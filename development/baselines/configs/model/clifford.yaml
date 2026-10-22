@@ -1,0 +1,19 @@
+# ABLATION_CONFIGS["baseline"] preset:
+#   routing_mode=none, use_cross_track=false.
+model:
+  name: clifford
+  interface: data_wrapper
+  n_atom_types: 100
+  n_channels: 80
+  n_interactions: 5
+  n_rbf: 50
+  cutoff: 6.0
+  n_hidden_output: 80
+  max_neighbors: 50
+  use_l2: false
+  stf_mode: "none"
+  use_hodge_forces: false
+  use_adaptive_routing: false
+  routing_mode: "none"
+  use_cross_track: false
+  use_compile: false

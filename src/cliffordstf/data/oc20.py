@@ -1,4 +1,4 @@
-"""OC20 dataset factories: S2EF, IS2RE, and three Tier-3 adsorbate subsets."""
+"""OC20 dataset factories for S2EF and IS2RE."""
 
 from __future__ import annotations
 
@@ -6,12 +6,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from cliffordstf.data._oc20_io import OC20LMDBDataset
-from cliffordstf.data._oc20_subsets import (
-    C2_ADSORBATES,
-    CO2RR_ADSORBATES,
-    NRR_ADSORBATES,
-    build_oc20_adsorbate_subset,
-)
 from cliffordstf.data.loader import build_loader
 
 if TYPE_CHECKING:
@@ -46,7 +40,7 @@ def _build_with_dataset_factory(
     make_dataset: Callable[[str, int | None], Dataset[Data]],
 ) -> list[LoaderSet]:
     """Common scaffolding: build train/val/(test) loaders from a dataset factory."""
-    from cliffordstf.data import LoaderSet  # local import: break circular dep
+    from cliffordstf.data import LoaderSet
 
     ds_cfg = cfg.dataset
     max_train = ds_cfg.get("max_train_samples", None)
@@ -90,26 +84,6 @@ def _oc20_lmdb_factory(cfg: DictConfig, *, task: str) -> list[LoaderSet]:
     return _build_with_dataset_factory(cfg, make_dataset)
 
 
-def _oc20_subset_factory(
-    cfg: DictConfig,
-    *,
-    adsorbates: frozenset[str],
-    cache_subdir: str,
-) -> list[LoaderSet]:
-    ds_cfg = cfg.dataset
-
-    def make_dataset(split: str, max_samples: int | None) -> Dataset[Data]:
-        return build_oc20_adsorbate_subset(
-            root=ds_cfg.data_root,
-            split=split,
-            adsorbates=adsorbates,
-            cache_subdir=cache_subdir,
-            max_samples=max_samples,
-        )
-
-    return _build_with_dataset_factory(cfg, make_dataset)
-
-
 def build_oc20_s2ef_loaders(cfg: DictConfig) -> list[LoaderSet]:
     """OC20 S2EF (energy + forces) LoaderSet."""
     task = cfg.dataset.get("task", cfg.dataset.get("task_type", "s2ef"))
@@ -121,25 +95,4 @@ def build_oc20_is2re_loaders(cfg: DictConfig) -> list[LoaderSet]:
     return _oc20_lmdb_factory(cfg, task="is2re")
 
 
-def build_oc20_s2ef_co2rr_loaders(cfg: DictConfig) -> list[LoaderSet]:
-    """OC20 S2EF filtered to CO2 reduction adsorbates."""
-    return _oc20_subset_factory(cfg, adsorbates=CO2RR_ADSORBATES, cache_subdir="co2rr")
-
-
-def build_oc20_s2ef_nrr_loaders(cfg: DictConfig) -> list[LoaderSet]:
-    """OC20 S2EF filtered to nitrogen reduction adsorbates."""
-    return _oc20_subset_factory(cfg, adsorbates=NRR_ADSORBATES, cache_subdir="nrr")
-
-
-def build_oc20_s2ef_c2_loaders(cfg: DictConfig) -> list[LoaderSet]:
-    """OC20 S2EF filtered to C-C coupling adsorbates."""
-    return _oc20_subset_factory(cfg, adsorbates=C2_ADSORBATES, cache_subdir="c2")
-
-
-__all__ = [
-    "build_oc20_is2re_loaders",
-    "build_oc20_s2ef_c2_loaders",
-    "build_oc20_s2ef_co2rr_loaders",
-    "build_oc20_s2ef_loaders",
-    "build_oc20_s2ef_nrr_loaders",
-]
+__all__ = ["build_oc20_is2re_loaders", "build_oc20_s2ef_loaders"]

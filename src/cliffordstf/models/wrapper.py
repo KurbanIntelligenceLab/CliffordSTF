@@ -1,14 +1,9 @@
-"""CliffordSTF Clifford wrapper - ablation-ready ``nn.Module``.
-
-Backward-compatible: ``ABLATION_CONFIGS["baseline"]`` reproduces the original
-``CliffordWrapper`` behaviour. All twelve named ablations from the paper are
-preserved as :data:`ABLATION_CONFIGS` for documentation and reproduction.
-"""
+"""CliffordSTF Clifford wrapper - ablation-ready ``nn.Module``."""
 
 from __future__ import annotations
 
 import logging
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import torch
 from torch import nn
@@ -16,7 +11,8 @@ from torch_geometric.data import Data
 from torch_geometric.nn.pool import radius_graph
 
 from cliffordstf.models.interaction import CliffordSTF
-from cliffordstf.training.ema import ExponentialMovingAverage
+if TYPE_CHECKING:
+    from cliffordstf.training.ema import ExponentialMovingAverage
 
 _logger = logging.getLogger(__name__)
 
@@ -111,20 +107,7 @@ ABLATION_CONFIGS: dict[str, dict[str, Any]] = {
 
 
 class CliffordSTFWrapper(nn.Module):
-    """CliffordSTF Clifford encoder with the ``data_wrapper`` interface.
-
-    Drop-in replacement for the original ``CliffordWrapper`` with augmented
-    features (STF tracks, Hodge forces, adaptive routing).
-
-    Example:
-        model = CliffordSTFWrapper(
-            n_channels=128,
-            n_interactions=5,
-            stf_mode="stf2",
-            use_hodge_forces=True,
-        )
-        energy, forces = model(data)
-    """
+    """CliffordSTF Clifford encoder with the ``data_wrapper`` interface."""
 
     def __init__(
         self,
@@ -203,6 +186,8 @@ class CliffordSTFWrapper(nn.Module):
         self._ema_decay = ema_decay
 
     def init_ema(self) -> None:
+        from cliffordstf.training.ema import ExponentialMovingAverage
+
         if self.use_ema:
             model = self._get_raw_model()
             self._ema = ExponentialMovingAverage(model, decay=self._ema_decay)
@@ -239,11 +224,12 @@ class CliffordSTFWrapper(nn.Module):
     def forward(self, data: Data) -> tuple[torch.Tensor, torch.Tensor] | torch.Tensor:
         edge_index = self._build_edges(data)
         energy, forces = self._model(data.z, data.pos, edge_index, data.batch)
-        if self._get_raw_model().direct_forces:
-            return energy.view(-1), forces
-        return cast(torch.Tensor, energy.view(-1))
 
-    def forward_with_dens(self, data: Data) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        return energy.view(-1), forces
+
+    def forward_with_dens(
+        self, data: Data
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         edge_index = self._build_edges(data)
         energy, forces, dens_loss = self._get_raw_model().forward_with_dens(
             data.z, data.pos, edge_index, data.batch
@@ -257,19 +243,11 @@ def build_from_ablation(
     n_interactions: int = 5,
     **overrides: object,
 ) -> CliffordSTFWrapper:
-    """Build a wrapper from a named ablation config.
-
-    Args:
-        config_name: Key in :data:`ABLATION_CONFIGS`.
-        n_channels: Channel width override (always set).
-        n_interactions: Number of interaction layers (always set).
-        **overrides: Any other ``CliffordSTFWrapper`` argument.
-
-    Example:
-        model = build_from_ablation("stf2", n_channels=64, cutoff=6.0)
-    """
+    """Build a wrapper from a named ablation config."""
     if config_name not in ABLATION_CONFIGS:
-        raise ValueError(f"Unknown config: {config_name}. Available: {list(ABLATION_CONFIGS)}")
+        raise ValueError(
+            f"Unknown config: {config_name}. Available: {list(ABLATION_CONFIGS)}"
+        )
 
     cfg = {**ABLATION_CONFIGS[config_name]}
     cfg.update(overrides)

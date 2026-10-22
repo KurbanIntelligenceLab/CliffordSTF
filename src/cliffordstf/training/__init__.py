@@ -1,10 +1,4 @@
-"""Training utilities: optimizer / scheduler builders, losses, EMA.
-
-The ``trainer`` module imports :mod:`cliffordstf.models` (which in turn imports
-this package via the wrapper's EMA dependency), so it is NOT re-exported here -
-users construct ``train`` / ``train_one_run`` via
-``from cliffordstf.training.trainer import train``.
-"""
+"""Training utilities: optimizer / scheduler builders, losses, EMA."""
 
 from __future__ import annotations
 

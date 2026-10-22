@@ -1,10 +1,4 @@
-"""Optimizer and learning-rate scheduler builders driven by config.
-
-Both builders read ``cfg.training.*`` and return the corresponding torch
-objects. The optimizer is restricted to ``adam`` / ``adamw``; the scheduler
-supports ``step`` / ``cosine`` / ``plateau`` (or ``None`` when
-``cfg.training.lr_scheduler`` is not set).
-"""
+"""Optimizer and learning-rate scheduler builders driven by config."""
 
 from __future__ import annotations
 
@@ -23,13 +17,7 @@ if TYPE_CHECKING:
 
 
 def build_optimizer(cfg: DictConfig, model: nn.Module) -> optim.Optimizer:
-    """Build an ``Adam`` or ``AdamW`` optimizer from ``cfg.training``.
-
-    Reads:
-        ``cfg.training.lr`` (required).
-        ``cfg.training.weight_decay`` (default ``0.0``).
-        ``cfg.training.optimizer`` (``"adam"`` or ``"adamw"``, default ``"adam"``).
-    """
+    """Build an ``Adam`` or ``AdamW`` optimizer from ``cfg.training``."""
     lr = cfg.training.lr
     weight_decay = cfg.training.get("weight_decay", 0.0)
     opt_name = cfg.training.get("optimizer", "adam")
@@ -53,19 +41,7 @@ def build_scheduler(
     cfg: DictConfig,
     optimizer: optim.Optimizer,
 ) -> LRScheduler | ReduceLROnPlateau | None:
-    """Build a scheduler from ``cfg.training.lr_scheduler``, or ``None``.
-
-    Supported types:
-        ``step`` -> :class:`torch.optim.lr_scheduler.StepLR` with
-            ``step_size`` (default 10) and ``gamma`` (default 0.8).
-        ``cosine`` -> :class:`torch.optim.lr_scheduler.CosineAnnealingLR`
-            with ``T_max`` (default ``cfg.training.epochs``) and
-            ``eta_min`` (default 0.0).
-        ``plateau`` -> :class:`torch.optim.lr_scheduler.ReduceLROnPlateau`
-            with ``factor`` (default 0.5), ``patience`` (default 10), and
-            ``min_lr`` (default 1e-7); the trainer is responsible for
-            calling ``scheduler.step(val_metric)`` instead of ``step()``.
-    """
+    """Build a scheduler from ``cfg.training.lr_scheduler``, or ``None``."""
     sched_cfg = cfg.training.get("lr_scheduler", None)
     if not sched_cfg:
         return None
@@ -91,4 +67,6 @@ def build_scheduler(
             patience=sched_cfg.get("patience", 10),
             min_lr=sched_cfg.get("min_lr", 1e-7),
         )
-    raise ValueError(f"Unknown scheduler type '{sched_type}'. Use 'step', 'cosine', or 'plateau'.")
+    raise ValueError(
+        f"Unknown scheduler type '{sched_type}'. Use 'step', 'cosine', or 'plateau'."
+    )

@@ -1,9 +1,4 @@
-"""Asynchronous checkpoint I/O and JSON log writing.
-
-Checkpoint writes are dispatched to a single background-thread executor so the
-training loop never blocks on disk I/O. Always call :func:`wait_for_checkpoint`
-before exit so the last write completes.
-"""
+"""Asynchronous checkpoint I/O and JSON log writing."""
 
 from __future__ import annotations
 
@@ -50,12 +45,7 @@ def save_checkpoint(
     scaler: _StateDictProtocol | None = None,
     training_state: dict[str, Any] | None = None,
 ) -> None:
-    """Snapshot training state and dispatch the disk write to a background thread.
-
-    Tensors are cloned to CPU before submission so the write thread does not
-    pin GPU memory. The previous in-flight write is waited on before a new one
-    is queued, so at most one save is ever pending.
-    """
+    """Snapshot training state and dispatch the disk write to a background thread."""
     global _CKPT_FUTURE
     if _CKPT_FUTURE is not None:
         _CKPT_FUTURE.result()
@@ -90,11 +80,7 @@ def load_checkpoint(
     scaler: _StateDictProtocol | None = None,
     device: torch.device | str | None = None,
 ) -> tuple[int, dict[str, Any] | None]:
-    """Load a checkpoint and restore optimizer / scheduler / scaler state.
-
-    Returns ``(epoch, training_state)``. ``training_state`` carries fields like
-    ``best_val`` and ``best_epoch`` and is ``None`` if absent.
-    """
+    """Load a checkpoint and restore optimizer / scheduler / scaler state."""
     ckpt = torch.load(path, map_location=device or "cpu", weights_only=False)
     model.load_state_dict(ckpt["model_state_dict"])
     if optimizer is not None and "optimizer_state_dict" in ckpt:

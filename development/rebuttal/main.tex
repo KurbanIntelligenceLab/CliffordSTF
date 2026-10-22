@@ -1,0 +1,68 @@
+\documentclass{article}
+\usepackage[preprint]{neurips_2026}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+\usepackage{graphicx}
+\newtheorem{remark}{Remark}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{theorem}{Theorem}
+
+\title{Geometric Algebra Meets Cartesian Tensors: Higher-Order Equivariance for Interatomic Potentials}
+
+\author{%
+  \small % Compact overall block sizing
+  \begin{tabular}{c@{\hskip 0.6in}c}
+    \textbf{\normalsize Can Polat} & \textbf{\normalsize Erchin Serpedin} \\
+    \footnotesize Dept. of Electrical \& Computer Eng. & \footnotesize Dept. of Electrical \& Computer Eng. \\
+    \footnotesize Texas A\&M Univ. & \footnotesize Texas A\&M Univ. \\
+    \footnotesize College Station, TX, USA & \footnotesize College Station, TX, USA \\
+    \texttt{\footnotesize can.polat@tamu.edu} & \texttt{\footnotesize eserpedin@tamu.edu} \\
+    \\[0.05in] % Row separation spacing
+    \textbf{\normalsize Mustafa Kurban}\thanks{Corresponding author.} & \textbf{\normalsize Hasan Kurban}\footnotemark[1] \\
+    \footnotesize Dept. of Prosthetics \& Orthotics & \footnotesize College of Science \& Eng. \\
+    \footnotesize Ankara Univ., Ankara, Turkey & \footnotesize Hamad Bin Khalifa Univ. \\
+    \footnotesize \emph{and} Texas A\&M Univ. at Qatar & \footnotesize Doha, Qatar \\
+    \footnotesize Doha, Qatar & \texttt{\footnotesize hkurban@hbku.edu.qa} \\
+    \texttt{\footnotesize kurbanm@ankara.edu.tr} &
+  \end{tabular}
+}
+
+
+\begin{document}
+
+
+\maketitle
+
+\begin{abstract}
+$\mathrm{Cl}(3,0)$ interatomic potentials, despite their algebraic elegance, predict force magnitudes accurately but force directions poorly: across ten rMD17 molecules, every $L \leq 1$ baseline in our twelve-model study attains aggregate force-cosine similarity below $0.25$. The cause is structural. The geometric product of two vectors in $\mathbb{R}^3$ realises only the $L{=}0$ and $L{=}1$ pieces of its irrep content, leaving the symmetric-traceless rank-2 component absent from the per-edge bilinear that drives every message-passing layer. We close the gap with \textbf{CliffordSTF}, which couples the Clifford multivector to closed-form symmetric-traceless tensor tracks at ranks two and three through bilinear cross-track contractions, using a single learned bilinear and no Clebsch--Gordan tables, Wigner-$D$ matrices, or e3nn calls. On rMD17, CliffordSTF raises aggregate force-cosine similarity from $0.055$ (base Clifford) to $0.551$, an order-of-magnitude relative directional gain at improved magnitude accuracy (force MAE $15.8\%$ lower; energy MAE $10.9\%$ lower), and outperforms every CG-free or body-ordered baseline we evaluate (all $\leq 0.17$). On catalysis, CliffordSTF attains the best out-of-distribution S2EF energy MAE on OC22 in our study and the best in-distribution energy MAE among $L \geq 2$ methods on OC22 IS2RE. An eleven-variant ablation confirms the two tracks are empirically complementary: neither alone approaches the hybrid.
+\end{abstract}
+
+\input{sections/intro}
+\input{sections/related}
+\input{sections/method}
+\input{sections/experiments}
+\input{sections/discussion}
+
+\bibliographystyle{unsrtnat}
+\bibliography{main}
+
+\newpage
+\appendix
+\input{sections/supplementary}
+
+
+% \newpage
+% \input{checklist.tex}
+
+
+\end{document}

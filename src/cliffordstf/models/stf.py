@@ -1,25 +1,4 @@
-"""CliffordSTF Algebra: Cl(3,0) + STF_2 + STF_3.
-
-Core theorem exploited here:
-    For L=1 vectors u, v, the full CG product 1 (x) 1 -> 0 + 1 + 2 decomposes as
-        GP(u, v) = u . v + u ^ v        -> L=0 (1D) + L=1 (3D)
-        STF(u, v) = sym traceless(u (x) v) -> L=2 (5D)
-    Together GP + STF = full CG, computed without CG coefficients.
-
-Layout of CliffordSTF multivector (per channel):
-    [0:8]   Cl(3,0) multivector  - grades 0,1,2,3 = 2 . L=0 + 2 . L=1
-    [8:13]  STF_2                - symmetric traceless rank-2 = L=2 (5D)
-    [13:20] STF_3                - symmetric traceless rank-3 = L=3 (7D)
-
-    8D  mode: stf_mode="none"    (original Clifford)
-    13D mode: stf_mode="stf2"    (+ L=2)
-    20D mode: stf_mode="stf2+stf3" (+ L=2 + L=3)
-
-STF_2 storage: [S_xx, S_xy, S_xz, S_yy, S_yz]  (S_zz = -S_xx - S_yy)
-STF_3 storage: [T_xxx, T_xxy, T_xxz, T_xyy, T_xyz, T_yyy, T_yyz]
-              (T_xzz = -T_xxx - T_xyy, T_yzz = -T_xxy - T_yyy,
-               T_zzz = -T_xxz - T_yyz)
-"""
+"""CliffordSTF Algebra: Cl(3,0) + STF_2 + STF_3."""
 
 from __future__ import annotations
 
@@ -61,17 +40,7 @@ def clifford_stf_dim(stf_mode: str) -> int:
 
 
 def compute_stf2_product(u: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
-    """Symmetric traceless product of two L=1 vectors.
-
-    This is the L=2 channel of CG(1 (x) 1) that the geometric product misses.
-
-    Args:
-        u: ``(..., 3)`` vector.
-        v: ``(..., 3)`` vector.
-
-    Returns:
-        ``(..., 5)`` STF_2 components ``[S_xx, S_xy, S_xz, S_yy, S_yz]``.
-    """
+    """Symmetric traceless product of two L=1 vectors."""
     ux, uy, uz = u.unbind(-1)
     vx, vy, vz = v.unbind(-1)
 
@@ -88,14 +57,12 @@ def compute_stf2_product(u: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
 
 
 def stf2_norm_sq(s: torch.Tensor) -> torch.Tensor:
-    """Frobenius norm^2 of STF_2 tensor -> L=0 invariant.
-
-    ||S||^2 = S_xx^2 + S_yy^2 + S_zz^2 + 2 (S_xy^2 + S_xz^2 + S_yz^2),
-    where ``S_zz = -S_xx - S_yy``.
-    """
+    """Frobenius norm^2 of STF_2 tensor -> L=0 invariant."""
     s_xx, s_xy, s_xz, s_yy, s_yz = s.unbind(-1)
     s_zz = -s_xx - s_yy
-    return (s_xx**2 + s_yy**2 + s_zz**2 + 2.0 * (s_xy**2 + s_xz**2 + s_yz**2)).unsqueeze(-1)
+    return (
+        s_xx**2 + s_yy**2 + s_zz**2 + 2.0 * (s_xy**2 + s_xz**2 + s_yz**2)
+    ).unsqueeze(-1)
 
 
 def stf2_inner(s1: torch.Tensor, s2: torch.Tensor) -> torch.Tensor:
@@ -105,7 +72,10 @@ def stf2_inner(s1: torch.Tensor, s2: torch.Tensor) -> torch.Tensor:
     a_zz = -a_xx - a_yy
     b_zz = -b_xx - b_yy
     return (
-        a_xx * b_xx + a_yy * b_yy + a_zz * b_zz + 2.0 * (a_xy * b_xy + a_xz * b_xz + a_yz * b_yz)
+        a_xx * b_xx
+        + a_yy * b_yy
+        + a_zz * b_zz
+        + 2.0 * (a_xy * b_xy + a_xz * b_xz + a_yz * b_yz)
     ).unsqueeze(-1)
 
 
@@ -120,11 +90,7 @@ def reconstruct_stf2_matrix(s: torch.Tensor) -> torch.Tensor:
 
 
 def contract_stf2_vec(s: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
-    """Contract STF_2 with vector: S . v -> L=1 vector.
-
-    L=2 (x) L=1 -> L=1 channel (CG contraction). Implemented via the reconstructed
-    3x3 matrix and a single einsum.
-    """
+    """Contract STF_2 with vector: S . v -> L=1 vector."""
     s_mat = reconstruct_stf2_matrix(s)
     return torch.einsum("...ij,...j->...i", s_mat, v)
 
@@ -134,11 +100,7 @@ def compute_stf3_product(
     v: torch.Tensor,
     precomputed_sv: torch.Tensor | None = None,
 ) -> torch.Tensor:
-    """STF_3 from STF_2 (x) L=1 -> L=3 channel.
-
-    Computes the symmetric traceless part of ``S_ij * v_k``, the L=3 channel of
-    CG(2 (x) 1 -> 1 + 2 + 3).
-    """
+    """STF_3 from STF_2 (x) L=1 -> L=3 channel."""
     s_xx, s_xy, s_xz, s_yy, s_yz = stf2.unbind(-1)
     vx, vy, vz = v.unbind(-1)
 
@@ -182,10 +144,7 @@ def stf3_norm_sq(t: torch.Tensor) -> torch.Tensor:
 
 
 def contract_stf3_vec_to_stf2(t: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
-    """Contract STF_3 with vector -> STF_2 (L=3 (x) L=1 -> L=2 channel).
-
-    ``R_ij = sum_k T_ijk * v_k`` (symmetric, projected to traceless).
-    """
+    """Contract STF_3 with vector -> STF_2 (L=3 (x) L=1 -> L=2 channel)."""
     t_xxx, t_xxy, t_xxz, t_xyy, t_xyz, t_yyy, t_yyz = t.unbind(-1)
     vx, vy, vz = v.unbind(-1)
     t_xzz = -t_xxx - t_xyy
@@ -209,12 +168,7 @@ def contract_stf3_vec_to_stf2(t: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
 
 
 def contract_stf2_vec_to_stf2(s: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
-    """L=2 (x) L=1 -> L=2 channel (antisymmetric-like contraction).
-
-    Middle CG channel of ``2 (x) 1 -> 1 + 2 + 3``. Computed as the
-    cross-product-like operation between rows of ``S`` and ``v``, then
-    symmetrized and projected to traceless.
-    """
+    """L=2 (x) L=1 -> L=2 channel (antisymmetric-like contraction)."""
     s_xx, s_xy, s_xz, s_yy, s_yz = s.unbind(-1)
     vx, vy, vz = v.unbind(-1)
     s_zz = -s_xx - s_yy
@@ -248,11 +202,7 @@ def contract_stf2_vec_to_stf2(s: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
 
 
 def hodge_star_g2_to_vec(mv: torch.Tensor) -> torch.Tensor:
-    """Extract L=1 pseudovector from grade-2 bivectors via Hodge dual.
-
-    In Cl(3,0): ``*e12 = e3``, ``*e13 = -e2``, ``*e23 = e1``. Grade-2 layout is
-    ``[e12, e13, e23]`` at indices ``[4, 5, 6]``.
-    """
+    """Extract L=1 pseudovector from grade-2 bivectors via Hodge dual."""
     return torch.stack([mv[..., 6], -mv[..., 5], mv[..., 4]], dim=-1)
 
 
@@ -261,10 +211,7 @@ def make_aug_mv(
     stf2: torch.Tensor | None = None,
     stf3: torch.Tensor | None = None,
 ) -> torch.Tensor:
-    """Construct augmented multivector from components.
-
-    Returns ``(..., C, D)`` where ``D in {8, 13, 20}``.
-    """
+    """Construct augmented multivector from components."""
     parts = [cl]
     if stf2 is not None:
         parts.append(stf2)
@@ -295,11 +242,7 @@ def pad_cl_to_aug(cl: torch.Tensor, stf_mode: str) -> torch.Tensor:
 
 
 class CliffordSTFAlgebra(CliffordAlgebra):
-    """Cl(3,0) + STF_2 + STF_3 with cross-track products.
-
-    Inherits all GP variants from :class:`CliffordAlgebra`. Adds an augmented
-    product that couples the Clifford and STF tracks.
-    """
+    """Cl(3,0) + STF_2 + STF_3 with cross-track products."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -360,12 +303,7 @@ class CliffordSTFAlgebra(CliffordAlgebra):
 
 
 class CliffordSTFLinear(nn.Module):
-    """Block-diagonal linear map for augmented multivectors.
-
-    Separate weight matrices for the Clifford track (8D, grade-preserving), the
-    STF_2 track (5D), and the STF_3 track (7D). No cross-track linear mixing -
-    cross-track coupling happens only through products.
-    """
+    """Block-diagonal linear map for augmented multivectors."""
 
     def __init__(
         self,
@@ -378,7 +316,9 @@ class CliffordSTFLinear(nn.Module):
         super().__init__()
         self.stf_mode = stf_mode
 
-        self.cl_linear = CliffordLinear(c_in, c_out, bias=bias, active_grades=active_grades)
+        self.cl_linear = CliffordLinear(
+            c_in, c_out, bias=bias, active_grades=active_grades
+        )
 
         if stf_mode != "none":
             self.stf2_linear = nn.Linear(c_in, c_out, bias=False)
@@ -410,11 +350,7 @@ class CliffordSTFLinear(nn.Module):
 
 
 class CliffordSTFNorm(nn.Module):
-    """Grade-wise + track-wise normalization.
-
-    Clifford uses :class:`CliffordNorm` (per-grade norm). STF_2 and STF_3 each
-    use a Frobenius-norm RMS normalization over channels.
-    """
+    """Grade-wise + track-wise normalization."""
 
     def __init__(
         self,
@@ -461,11 +397,7 @@ class CliffordSTFNorm(nn.Module):
 
 
 class CliffordSTFGateActivation(nn.Module):
-    """Equivariant nonlinearity for augmented multivectors.
-
-    Clifford uses :class:`CliffordGateActivation` (norm-gating per grade). STF_2
-    and STF_3 each use a scalar gate driven by their Frobenius norm.
-    """
+    """Equivariant nonlinearity for augmented multivectors."""
 
     def __init__(
         self,
@@ -657,13 +589,7 @@ test_stf3_equivariance.__test__ = False  # type: ignore[attr-defined]
 def test_gp_plus_stf_equals_cg(
     n: int = 32, c: int = 8, atol: float = 1e-5, seed: int = 42
 ) -> dict[str, float | bool]:
-    """Verify GP + STF = full CG(1 (x) 1) numerically.
-
-    For two vectors ``u``, ``v``:
-      - CG(1 (x) 1) produces 9 components: L=0(1) + L=1(3) + L=2(5).
-      - GP(u, v) produces L=0(1) + L=1(3) (in indices ``0``, ``4``, ``5``, ``6``).
-      - STF(u, v) produces L=2(5).
-    """
+    """Verify GP + STF = full CG(1 (x) 1) numerically."""
     torch.manual_seed(seed)
     alg = CliffordAlgebra()
 

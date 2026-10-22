@@ -1,10 +1,4 @@
-"""Exponential moving average of model parameters.
-
-Provides ~2-5% accuracy gain for free during evaluation. The class shadows the
-``param.data`` of every trainable parameter and exposes
-``update`` / ``apply_shadow`` / ``restore`` for swapping the live weights with
-their EMA counterparts during validation.
-"""
+"""Exponential moving average of model parameters."""
 
 from __future__ import annotations
 
@@ -13,18 +7,7 @@ from torch import nn
 
 
 class ExponentialMovingAverage:
-    """EMA over the trainable parameters of an ``nn.Module``.
-
-    Example:
-        ema = ExponentialMovingAverage(model, decay=0.999)
-        # training loop
-        ema.update()
-        # eval
-        ema.apply_shadow()
-        model.eval()
-        validate()
-        ema.restore()
-    """
+    """EMA over the trainable parameters of an ``nn.Module``."""
 
     def __init__(self, model: nn.Module, decay: float = 0.999) -> None:
         self.model = model
@@ -40,7 +23,9 @@ class ExponentialMovingAverage:
     def update(self) -> None:
         for name, param in self.model.named_parameters():
             if param.requires_grad and name in self.shadow:
-                self.shadow[name].mul_(self.decay).add_(param.data, alpha=1.0 - self.decay)
+                self.shadow[name].mul_(self.decay).add_(
+                    param.data, alpha=1.0 - self.decay
+                )
 
     def apply_shadow(self) -> None:
         for name, param in self.model.named_parameters():

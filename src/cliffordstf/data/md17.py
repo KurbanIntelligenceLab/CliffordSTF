@@ -25,13 +25,7 @@ _logger = logging.getLogger(__name__)
 
 
 def _resolve_molecules(ds_cfg: DictConfig) -> list[str]:
-    """Resolve the dataset config's ``molecule`` selector into concrete names.
-
-    Accepts a single name, a list of names, or ``"all"``. Strips the
-    optional ``rmd17_`` prefix, validates against the known molecule
-    table, and keeps only molecules whose subdirectory exists under
-    ``ds_cfg.data_root``.
-    """
+    """Resolve the dataset config's ``molecule`` selector into concrete names."""
     data_root = Path(ds_cfg.data_root)
     mol_cfg = ds_cfg.get("molecule", "benzene")
 
@@ -46,7 +40,9 @@ def _resolve_molecules(ds_cfg: DictConfig) -> list[str]:
     for raw in candidates:
         name = raw[6:] if raw.startswith("rmd17_") else raw
         if name not in _MD17_MOLECULES:
-            raise ValueError(f"Unknown MD17 molecule {raw!r}. Available: {sorted(_MD17_MOLECULES)}")
+            raise ValueError(
+                f"Unknown MD17 molecule {raw!r}. Available: {sorted(_MD17_MOLECULES)}"
+            )
         if (data_root / name).is_dir():
             resolved.append(name)
         else:
@@ -64,28 +60,8 @@ def _resolve_molecules(ds_cfg: DictConfig) -> list[str]:
 
 
 def build_md17_loaders(cfg: DictConfig) -> list[LoaderSet]:
-    """Build MD17 LoaderSets for the configured molecules and folds.
-
-    Reads from ``cfg.dataset``:
-        ``data_root``: root directory containing per-molecule subdirs.
-        ``molecule``: a name, a list of names, or ``"all"``.
-        ``k_folds``: number of CV folds (default ``3``). ``1`` selects the
-            random train/test split.
-        ``val_frac``: fraction of the training pool used for validation
-            (default ``0.1``).
-        ``max_train_samples``: cap on training-set size to avoid
-            time-series correlation across consecutive frames (default
-            ``1000``).
-        ``test_samples``: size of the held-out test set when
-            ``k_folds == 1`` (default ``1000``).
-        ``debug_subset``: optional ``int`` that truncates train/test to
-            the first ``N`` samples.
-
-    Also reads ``cfg.seed`` for fold splitting (combined with the fold
-    index for the train/val random split) and ``cfg.training.*`` keys
-    for DataLoader options (via :func:`build_loader`).
-    """
-    from cliffordstf.data import LoaderSet  # local import: break circular dep
+    """Build MD17 LoaderSets for the configured molecules and folds."""
+    from cliffordstf.data import LoaderSet
 
     ds_cfg = cfg.dataset
     seed = int(cfg.seed)
@@ -101,18 +77,36 @@ def build_md17_loaders(cfg: DictConfig) -> list[LoaderSet]:
     for molecule in molecules:
         full_dataset = MD17Dataset(root=ds_cfg.data_root, molecule=molecule)
 
-        if k_folds == 1:
+        split_dir = ds_cfg.get("split_dir", None)
+        split_id = ds_cfg.get("split_id", None)
+        if split_dir is not None and split_id is not None:
+            import numpy as _np
+            from pathlib import Path as _Path
+
+            sd = _Path(split_dir)
+            tr_pool = _np.loadtxt(
+                sd / f"index_train_{int(split_id):02d}.csv", dtype=int
+            ).tolist()
+            te_idx = _np.loadtxt(
+                sd / f"index_test_{int(split_id):02d}.csv", dtype=int
+            ).tolist()
+            splits: list[tuple[int, list[int], list[int]]] = [(1, tr_pool, te_idx)]
+        elif k_folds == 1:
             test_samples = int(ds_cfg.get("test_samples", 1000))
             n = len(full_dataset)
-            indices = torch.randperm(n, generator=torch.Generator().manual_seed(0)).tolist()
+            indices = torch.randperm(
+                n, generator=torch.Generator().manual_seed(0)
+            ).tolist()
             test_idx = indices[-test_samples:]
             train_idx = indices[:-test_samples]
-            splits: list[tuple[int, list[int], list[int]]] = [(1, train_idx, test_idx)]
+            splits = [(1, train_idx, test_idx)]
         else:
             kf = KFold(n_splits=k_folds, shuffle=True, random_state=seed)
             splits = [
                 (fold, list(tr), list(te))
-                for fold, (tr, te) in enumerate(kf.split(range(len(full_dataset))), start=1)
+                for fold, (tr, te) in enumerate(
+                    kf.split(range(len(full_dataset))), start=1
+                )
             ]
 
         for fold, train_idx_, test_idx_ in splits:
@@ -142,9 +136,14 @@ def build_md17_loaders(cfg: DictConfig) -> list[LoaderSet]:
 
             generator = torch.Generator().manual_seed(seed + fold)
             train_loader = build_loader(
-                cast("Dataset[object]", train_dataset), cfg, shuffle=True, generator=generator
+                cast("Dataset[object]", train_dataset),
+                cfg,
+                shuffle=True,
+                generator=generator,
             )
-            val_loader = build_loader(cast("Dataset[object]", val_dataset), cfg, shuffle=False)
+            val_loader = build_loader(
+                cast("Dataset[object]", val_dataset), cfg, shuffle=False
+            )
             test_loader = build_loader(ds_test, cfg, shuffle=False)
 
             fold_sets.append(

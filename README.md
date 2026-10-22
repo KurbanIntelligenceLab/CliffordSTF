@@ -14,17 +14,17 @@ Baseline accuracy values come from the [published CliffordIP study](https://doi.
 
 | Manuscript result | Data | Records and units |
 | --- | --- | --- |
-| Table 1: rMD17 energy and force MAE | [published_comparison.json](manuscript_work/data/published_comparison.json) | `published_rmd17` and `cliffordstf_rmd17`; energy in eV, force in eV/Å; means over four seeds and aggregates over ten molecules |
-| Abstract and rMD17 force cosine | [cliffordip_published_and_allseed.json](manuscript_work/data/cliffordip_published_and_allseed.json) | `rmd17_all_seed_aggregates_meV`: `C` is cosine, `E` is meV, `F` is meV/Å; relative improvements use unrounded errors |
-| Table 2 and ESI Table S2: ablations | [ablation_rmd17.json](manuscript_work/data/ablation_rmd17.json) | Twelve records with `name`, `flags`, and `[mean, standard deviation]` pairs: `f` in meV/Å, `e` in meV, `c` dimensionless; four molecules averaged within each of six seeds |
-| Table 3 and ESI Tables S5 and S6: OC20 and OC22 | [published_comparison.json](manuscript_work/data/published_comparison.json) | `published_oc`, `cliffordstf_oc`, and `columns`; energy in eV, force in eV/Å; all three OC20 seeds and all four OC22 seeds included |
-| ESI Tables S3 and S4: training and architecture settings | [source_results.json](manuscript_work/data/source_results.json) | `sheets` benchmark rows contain `model_config` and `training_config`; larger-model settings are specified in ESI Section S15 |
-| ESI Tables S7 and S8 and Figure S1: larger rMD17 models and seed spread | [rmd17_multiseed.json](manuscript_work/data/rmd17_multiseed.json) | `configurations.cliffordstf_1p9M`, `configurations.cliffordstf_10M`, `seeds`, and `published_table4_force_mae`; 80 evaluations, force MAE in kcal/mol/Å, force cosine and stopping epochs |
-| ESI Table S9: computational timing | [wallclock.csv](manuscript_work/data/wallclock.csv) | Per-model inference and training step means and standard deviations in seconds, batch size, parameter counts, and measurement settings |
-| Computational-cost memory comparison | [mem_bench_result.json](manuscript_work/data/mem_bench_result.json) | `models` contains peak inference and training memory in MiB; hardware and batch settings are included |
-| ESI Tables S10 and S11: cross-track stability | [cross_track_stability.json](manuscript_work/data/cross_track_stability.json) | `variants.stf_full`, `variants.stf_full_no_cross`, and `normalization_medians`; per-run energy MAE in meV, force cosine, loss ratios, and seed-mean energy errors |
+| Table 1: rMD17 energy and force MAE | [published_comparison.json](results/published_comparison.json) | `published_rmd17` and `cliffordstf_rmd17`; energy in eV, force in eV/Å; means over four seeds and aggregates over ten molecules |
+| Abstract and rMD17 force cosine | [rmd17_headline.json](results/rmd17_headline.json) | `rmd17_all_seed_aggregates_meV`: `C` is cosine, `E` is meV, `F` is meV/Å; relative improvements use unrounded errors |
+| Table 2 and ESI Table S2: ablations | [ablation_rmd17.json](results/ablation_rmd17.json) | Twelve records with `name`, `flags`, and `[mean, standard deviation]` pairs: `f` in meV/Å, `e` in meV, `c` dimensionless; four molecules averaged within each of six seeds |
+| Table 3 and ESI Tables S5 and S6: OC20 and OC22 | [published_comparison.json](results/published_comparison.json) | `published_oc`, `cliffordstf_oc`, and `columns`; energy in eV, force in eV/Å; all three OC20 seeds and all four OC22 seeds included |
+| ESI Tables S3 and S4: training and architecture settings | [source_results.json](results/source_results.json) | `sheets` benchmark rows contain `model_config` and `training_config`; larger-model settings are specified in ESI Section S15 |
+| ESI Tables S7 and S8 and Figure S1: larger rMD17 models and seed spread | [rmd17_multiseed.json](results/rmd17_multiseed.json) | `configurations.cliffordstf_1p9M`, `configurations.cliffordstf_10M`, `seeds`, and `published_table4_force_mae`; 80 evaluations, force MAE in kcal/mol/Å, force cosine and stopping epochs |
+| ESI Table S9: computational timing | [wallclock.json](results/wallclock.json) | `measurements`: per-model inference and training step means and standard deviations in seconds, batch size, parameter counts, and measurement settings |
+| Computational-cost memory comparison | [mem_bench_result.json](results/mem_bench_result.json) | `models` contains peak inference and training memory in MiB; hardware and batch settings are included |
+| ESI Tables S10 and S11: cross-track stability | [cross_track_stability.json](results/cross_track_stability.json) | `variants.stf_full`, `variants.stf_full_no_cross`, and `normalization_medians`; per-run energy MAE in meV, force cosine, loss ratios, and seed-mean energy errors |
 
-[source_results.json](manuscript_work/data/source_results.json) also contains the per-seed primary benchmark and ablation records. Each sheet begins with its column names. The STF-only readout runs are in `sheets.NPJ_Ablation`. Model selection retains all seeds and completion statuses, including the early-diverging OC22 IS2RE run. [rmd17_summary.json](manuscript_work/data/rmd17_summary.json) contains the larger-model aggregate statistics.
+[source_results.json](results/source_results.json) also contains the per-seed primary benchmark and ablation records. Each sheet begins with its column names. The STF-only readout runs are in `sheets.NPJ_Ablation`. Model selection retains all seeds and completion statuses, including the early-diverging OC22 IS2RE run.
 
 Figure 1 describes the architecture, and ESI Table S1 gives analytical parity labels; neither represents measured data.
 
@@ -36,7 +36,7 @@ Use Python 3.12:
 uv sync --frozen
 ```
 
-PyTorch Geometric extensions must match the installed PyTorch and accelerator versions. Baseline adapters are retired; published comparison results do not require baseline packages.
+PyTorch Geometric extensions must match the installed PyTorch and accelerator versions. Published comparison results do not require baseline packages.
 
 ## Training and evaluation
 
@@ -58,7 +58,7 @@ uv run cliffordstf-train \
 
 The primary rMD17 protocol uses a 900/100/1,000 train/validation/test split and seeds 1, 2, 3, and 4. OC20 uses seeds 1, 2, and 3; OC22 uses seeds 1, 2, 3, and 4. ESI Section S13 specifies the benchmark settings. The legacy trainer evaluates the best checkpoint on the test split after training and saves configuration snapshots, checkpoints, and metrics under `output_root`.
 
-The larger rMD17 experiments use split 01, 950/50/1,000 configurations, seeds 42, 43, 44, and 45, and energy-gradient forces. Their model and optimizer settings are in ESI Section S15. The original launchers in `reproduction/` require the staged data bundle and CUDA environment used for those runs.
+The larger rMD17 experiments use split 01, 950/50/1,000 configurations, seeds 42, 43, 44, and 45, and energy-gradient forces. Their model and optimizer settings are in ESI Section S15.
 
 ## Scientific checks
 
@@ -66,7 +66,7 @@ The larger rMD17 experiments use split 01, 950/50/1,000 configurations, seeds 42
 uv run pytest
 ```
 
-The tests check Clifford algebra identities, STF projectors, rotational equivariance, energy invariance, permutation symmetry, and conservative-force consistency. Conservation checks apply to the energy-gradient model. Tests run manually; the repository has no CI or type-checking gate.
+The tests check Clifford algebra identities, STF projectors, rotational equivariance, energy invariance, permutation symmetry, and conservative-force consistency. Conservation checks apply to the energy-gradient model.
 
 ## Citation
 

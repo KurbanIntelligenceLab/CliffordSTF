@@ -1,9 +1,0 @@
-model:
-  name: gotennet
-  n_atom_basis: 96
-  n_interactions: 5
-  cutoff: 6.0
-  max_num_neighbors: 50
-  cutoff_fn_name: cosine
-  pooling: auto
-  direct_forces: true
